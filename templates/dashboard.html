@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Dashboard - Vulnerable Web App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container dashboard">
+      <!-- Vulnerable: Unescaped user input -->
+      <div class="welcome-message">
+        Welcome back, <span id="username">{{username|safe}}</span>!
+      </div>
+
+      <div class="search-container">
+        <!-- Vulnerable: SQL injection in search -->
+        <input type="text" id="search" placeholder="Search users..." />
+        <button onclick="search()">Search</button>
+
+        <!-- Example SQL injection hints -->
+        <div class="hint">
+          Try these searches:
+          <ul>
+            <li>' OR '1'='1</li>
+            <li>
+              ' UNION SELECT sql,name,type FROM sqlite_master WHERE
+              type='table'--
+            </li>
+            <li>' UNION SELECT password,username,id FROM user--</li>
+          </ul>
+        </div>
+
+        <!-- Example XSS hints -->
+        <div class="hint">
+          Try these XSS payloads:
+          <ul>
+            <li>&lt;script&gt;alert('XSS')&lt;/script&gt;</li>
+            <li>&lt;img src=x onerror=alert(1)&gt;</li>
+            <li>&lt;svg/onload=alert('XSS')&gt;</li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="results" class="results">
+        <!-- Search results will appear here -->
+      </div>
+    </div>
+
+    <script>
+      // Vulnerable: JavaScript that doesn't sanitize input
+      function search() {
+        var query = document.getElementById("search").value;
+        fetch("/search?q=" + query)
+          .then((response) => response.json())
+          .then((data) => {
+            var results = document.getElementById("results");
+            results.innerHTML = ""; // Vulnerable: Direct innerHTML assignment
+            if (Array.isArray(data)) {
+              data.forEach((user) => {
+                results.innerHTML += `
+                  <div class="user-result">
+                    <strong>Username:</strong> ${user.username}<br>
+                    <strong>ID:</strong> ${user.id}<br>
+                    <strong>Password:</strong> ${user.password}
+                  </div>
+                `;
+              });
+            } else {
+              results.innerHTML = `<div class="error">${JSON.stringify(
+                data
+              )}</div>`;
+            }
+          })
+          .catch((error) => {
+            document.getElementById("results").innerHTML = `
+              <div class="error">Error: ${error.message}</div>
+            `;
+          });
+      }
+    </script>
+  </body>
+</html>
