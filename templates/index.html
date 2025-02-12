@@ -7,42 +7,46 @@
       rel="stylesheet"
       href="{{ url_for('static', filename='style.css') }}"
     />
-    <meta http-equiv="refresh" content="2;url=/login" />
   </head>
   <body>
     <div class="container">
-      <h1>Welcome to Vulnerable Web App</h1>
-      <p class="hint">Redirecting to login page...</p>
+      <div class="welcome-section">
+        <h1>Welcome to Our Web Application</h1>
+        <p>
+          A feature-rich web application for managing user data and performing
+          various operations.
+        </p>
 
-      <!-- Loading animation -->
-      <div class="loading">
-        <div class="spinner"></div>
+        <div class="cta-buttons">
+          <a href="/login" class="button primary">Login</a>
+          <a href="/register" class="button secondary">Register</a>
+        </div>
       </div>
 
-      <style>
-        /* Simple loading animation */
-        .loading {
-          display: flex;
-          justify-content: center;
-          margin: 2rem 0;
-        }
-        .spinner {
-          width: 40px;
-          height: 40px;
-          border: 4px solid #f3f3f3;
-          border-top: 4px solid var(--secondary-color);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-      </style>
+      <div class="features-section">
+        <h2>Features</h2>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h3>User Management</h3>
+            <p>Create and manage user accounts with detailed profiles</p>
+          </div>
+
+          <div class="feature-card">
+            <h3>Search Functionality</h3>
+            <p>Advanced search capabilities to find users and information</p>
+          </div>
+
+          <div class="feature-card">
+            <h3>Admin Tools</h3>
+            <p>Powerful administrative tools for system management</p>
+          </div>
+
+          <div class="feature-card">
+            <h3>Security Features</h3>
+            <p>Built-in security tools and monitoring capabilities</p>
+          </div>
+        </div>
+      </div>
     </div>
   </body>
 </html>

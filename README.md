@@ -16,9 +16,29 @@ This web application is designed for educational purposes ONLY. It contains nume
    - Default admin credentials (admin/admin123)
    - Debug mode enabled
    - Hardcoded secret key
-4. Other Issues
-   - No CSRF protection
+   - Insecure HTTP headers (e.g., X-Powered-By, Content-Security-Policy)
+4. Cryptographic Failures
+   - Weak cryptographic algorithm (MD5)
    - Plaintext password storage
+5. Identification and Authentication Failures
+   - Plaintext password storage
+   - Weak password policies (minimum 4 characters)
+   - Session fixation vulnerability (no session ID regeneration)
+6. Software and Data Integrity Failures
+   - Insecure update mechanism
+   - No signature verification
+   - Unvalidated backup/restore
+7. Security Logging and Monitoring Failures
+   - No logging of sensitive actions
+   - No error logging
+   - Detailed error messages in production
+   - No rate limiting
+8. Server-Side Request Forgery (SSRF)
+   - Unvalidated URL fetching
+   - Internal network scanning possible
+   - No URL scheme restrictions
+9. Other Issues
+   - No CSRF protection
    - Direct object references
    - Unescaped user input
 

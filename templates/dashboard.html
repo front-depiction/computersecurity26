@@ -9,77 +9,99 @@
     />
   </head>
   <body>
-    <div class="container dashboard">
-      <!-- Vulnerable: Unescaped user input -->
-      <div class="welcome-message">
-        Welcome back, <span id="username">{{username|safe}}</span>!
-      </div>
+    <div class="container">
+      <nav class="top-nav">
+        <span>Welcome, {{ username }}</span>
+        <a href="/logout" class="logout-btn">Logout</a>
+      </nav>
 
-      <div class="search-container">
-        <!-- Vulnerable: SQL injection in search -->
-        <input type="text" id="search" placeholder="Search users..." />
-        <button onclick="search()">Search</button>
+      <div class="dashboard-content">
+        <h1>Dashboard</h1>
 
-        <!-- Example SQL injection hints -->
-        <div class="hint">
-          Try these searches:
-          <ul>
-            <li>' OR '1'='1</li>
-            <li>
-              ' UNION SELECT sql,name,type FROM sqlite_master WHERE
-              type='table'--
-            </li>
-            <li>' UNION SELECT password,username,id FROM user--</li>
-          </ul>
+        <div class="search-section">
+          <h2>Search Users</h2>
+          <form action="/search" method="GET" class="search-form">
+            <input type="text" name="q" placeholder="Search users..." />
+            <button type="submit">Search</button>
+          </form>
+          <div id="search-results"></div>
         </div>
 
-        <!-- Example XSS hints -->
-        <div class="hint">
-          Try these XSS payloads:
-          <ul>
-            <li>&lt;script&gt;alert('XSS')&lt;/script&gt;</li>
-            <li>&lt;img src=x onerror=alert(1)&gt;</li>
-            <li>&lt;svg/onload=alert('XSS')&gt;</li>
-          </ul>
+        {% if is_admin == 'true' %}
+        <div class="admin-section">
+          <h2>Admin Panel</h2>
+          <div class="admin-actions">
+            <button onclick="location.href='/backup'">Download Backup</button>
+            <button onclick="location.href='/endpoints'">
+              View All Routes
+            </button>
+          </div>
         </div>
-      </div>
+        {% endif %}
 
-      <div id="results" class="results">
-        <!-- Search results will appear here -->
+        <div class="tools-section">
+          <h2>Tools</h2>
+          <div class="tool-grid">
+            <div class="tool-card">
+              <h3>Website Checker</h3>
+              <form action="/check-website" method="GET">
+                <input type="url" name="url" placeholder="Enter URL to check" />
+                <button type="submit">Check</button>
+              </form>
+            </div>
+
+            <div class="tool-card">
+              <h3>Hash Generator</h3>
+              <form action="/hash" method="POST">
+                <input
+                  type="text"
+                  name="data"
+                  placeholder="Enter text to hash"
+                />
+                <button type="submit">Generate Hash</button>
+              </form>
+            </div>
+
+            <div class="tool-card">
+              <h3>Avatar Fetcher</h3>
+              <form action="/fetch-avatar" method="GET">
+                <input type="url" name="url" placeholder="Enter avatar URL" />
+                <button type="submit">Fetch Avatar</button>
+              </form>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
     <script>
-      // Vulnerable: JavaScript that doesn't sanitize input
-      function search() {
-        var query = document.getElementById("search").value;
-        fetch("/search?q=" + query)
-          .then((response) => response.json())
-          .then((data) => {
-            var results = document.getElementById("results");
-            results.innerHTML = ""; // Vulnerable: Direct innerHTML assignment
-            if (Array.isArray(data)) {
-              data.forEach((user) => {
-                results.innerHTML += `
-                  <div class="user-result">
-                    <strong>Username:</strong> ${user.username}<br>
-                    <strong>ID:</strong> ${user.id}<br>
-                    <strong>Password:</strong> ${user.password}
-                  </div>
-                `;
-              });
-            } else {
-              results.innerHTML = `<div class="error">${JSON.stringify(
-                data
-              )}</div>`;
-            }
-          })
-          .catch((error) => {
-            document.getElementById("results").innerHTML = `
-              <div class="error">Error: ${error.message}</div>
-            `;
-          });
-      }
+      // Handle search form submission
+      document
+        .querySelector(".search-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const query = e.target.q.value;
+          const response = await fetch(
+            `/search?q=${encodeURIComponent(query)}`
+          );
+          const results = await response.json();
+
+          const resultsDiv = document.getElementById("search-results");
+          if (results.error) {
+            resultsDiv.innerHTML = `<p class="error">${results.error}</p>`;
+          } else {
+            resultsDiv.innerHTML = results
+              .map(
+                (user) => `
+            <div class="user-card">
+              <h3>${user.username}</h3>
+              <p>${user.email || ""}</p>
+            </div>
+          `
+              )
+              .join("");
+          }
+        });
     </script>
   </body>
 </html>
