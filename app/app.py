@@ -5,6 +5,7 @@ import hashlib  # Import for weak cryptographic example
 import json
 import requests
 from urllib.parse import urlparse
+import sqlite3  # Add SQLite3 import
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.secret_key = 'very_secret_key_123'  # Vulnerable: Hardcoded secret key
@@ -95,10 +96,14 @@ def login():
         password = request.form['password']
         
         try:
-            # Vulnerable: SQL Injection still possible here with SQLAlchemy execute
-            result = db.session.execute(
-                f"SELECT * FROM user WHERE username='{username}' AND password='{password}'"
-            ).fetchone()
+            # Use direct SQLite3 connection instead of SQLAlchemy
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Vulnerable: Direct string formatting in SQL query
+            query = f"SELECT * FROM user WHERE username='{username}' AND password='{password}'"
+            cursor.execute(query)
+            result = cursor.fetchone()
             
             if result:
                 session['username'] = username
@@ -111,6 +116,9 @@ def login():
         except Exception as e:
             # Make SQL errors visible for easier exploitation
             return str(e), 500
+        finally:
+            cursor.close()
+            conn.close()
             
     return render_template('login.html')
 
@@ -130,23 +138,29 @@ def search():
     query = request.args.get('q', '')
     
     try:
-        # Using SQLAlchemy but still vulnerable to SQL injection
-        # Modified to return results in a more consistent format
-        results = db.session.execute(
-            f"SELECT * FROM user WHERE username LIKE '%{query}%'"
-        ).fetchall()
+        # Use direct SQLite3 connection
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
         
-        # Convert results to list of dicts with column names
-        formatted_results = []
-        for row in results:
-            # Get column names from the result
-            columns = row.keys() if hasattr(row, 'keys') else ['id', 'username', 'password']
-            formatted_results.append(dict(zip(columns, row)))
+        # Vulnerable: Direct string formatting in SQL query
+        sql = f"SELECT * FROM user WHERE username LIKE '%{query}%'"
+        cursor.execute(sql)
         
-        return jsonify(formatted_results)
+        # Get column names
+        columns = [description[0] for description in cursor.description]
+        
+        # Convert results to list of dicts
+        results = []
+        for row in cursor.fetchall():
+            results.append(dict(zip(columns, row)))
+        
+        return jsonify(results)
     except Exception as e:
         # Return error in a way that helps with SQL injection testing
         return jsonify({"error": str(e), "query": query})
+    finally:
+        cursor.close()
+        conn.close()
 
 @app.route('/hash', methods=['POST'])
 def hash_example():
