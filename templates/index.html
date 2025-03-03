@@ -1,52 +1,94 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Welcome - Vulnerable Web App</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-    />
-  </head>
-  <body>
-    <div class="container">
-      <div class="welcome-section">
-        <h1>Welcome to Our Web Application</h1>
-        <p>
-          A feature-rich web application for managing user data and performing
-          various operations.
+{% extends "base.html" %} {% block title %}SimpleChat - A Lightweight Chat
+Application{% endblock %} {% block content %}
+<div
+  class="min-h-screen flex flex-col items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8"
+>
+  <div class="max-w-md w-full bg-white rounded-lg shadow-lg overflow-hidden">
+    <div class="px-6 py-8">
+      <div class="text-center">
+        <div class="text-5xl mb-6">💬</div>
+        <h2 class="text-3xl font-extrabold text-gray-900 mb-2">
+          Welcome to SimpleChat
+        </h2>
+        <p class="text-gray-600 mb-8">
+          A simple and lightweight messaging application
         </p>
-
-        <div class="cta-buttons">
-          <a href="/login" class="button primary">Login</a>
-          <a href="/register" class="button secondary">Register</a>
-        </div>
       </div>
 
-      <div class="features-section">
-        <h2>Features</h2>
-        <div class="feature-grid">
-          <div class="feature-card">
-            <h3>User Management</h3>
-            <p>Create and manage user accounts with detailed profiles</p>
-          </div>
+      <div class="space-y-4">
+        <a
+          href="/login"
+          class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
+        >
+          Login
+        </a>
+        <a
+          href="/register"
+          class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out"
+        >
+          Register
+        </a>
+      </div>
 
-          <div class="feature-card">
-            <h3>Search Functionality</h3>
-            <p>Advanced search capabilities to find users and information</p>
-          </div>
+      {% if current_user %}
+      <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600 mb-2">
+          You are already logged in as
+          <span class="font-medium">{{ current_user.username }}</span>
+        </p>
+        <a
+          href="/messages"
+          class="text-blue-500 hover:text-blue-700 font-medium transition duration-150 ease-in-out"
+        >
+          Go to Messages
+        </a>
+      </div>
+      {% endif %}
+    </div>
 
-          <div class="feature-card">
-            <h3>Admin Tools</h3>
-            <p>Powerful administrative tools for system management</p>
-          </div>
-
-          <div class="feature-card">
-            <h3>Security Features</h3>
-            <p>Built-in security tools and monitoring capabilities</p>
-          </div>
-        </div>
+    <div class="bg-gray-50 px-6 py-4 border-t border-gray-200">
+      <div class="text-center text-xs text-gray-500">
+        <p>
+          SimpleChat is a demonstration application with intentional security
+          vulnerabilities.
+        </p>
+        <p>Do not use real personal information.</p>
       </div>
     </div>
-  </body>
-</html>
+  </div>
+
+  <!-- Features Section -->
+  <div class="mt-12 max-w-4xl w-full">
+    <h3 class="text-xl font-bold text-gray-800 mb-6 text-center">Features</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="text-blue-500 text-2xl mb-3">💬</div>
+        <h4 class="text-lg font-semibold text-gray-800 mb-2">
+          Real-time Messaging
+        </h4>
+        <p class="text-gray-600">
+          Chat with your friends and colleagues in real-time.
+        </p>
+      </div>
+
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="text-blue-500 text-2xl mb-3">👥</div>
+        <h4 class="text-lg font-semibold text-gray-800 mb-2">User Profiles</h4>
+        <p class="text-gray-600">
+          Create and customize your profile with personal information.
+        </p>
+      </div>
+
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <div class="text-blue-500 text-2xl mb-3">🔒</div>
+        <h4 class="text-lg font-semibold text-gray-800 mb-2">
+          Security Vulnerabilities
+        </h4>
+        <p class="text-gray-600">
+          Intentional security issues for educational purposes.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

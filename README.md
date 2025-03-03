@@ -44,19 +44,35 @@ This web application is designed for educational purposes ONLY. It contains nume
 
 ## Setup Instructions
 
-1. Build the Docker image:
+1. Run all commands at once:
 
    ```bash
-   docker build -t vulnerable-webapp .
+   docker rmi vulnerable-webapp || true && \
+   docker build --no-cache -t vulnerable-webapp . && \
+   docker run -p 5001:5001 vulnerable-webapp
    ```
 
-2. Run the container:
+   Or run each step individually:
+
+2. Remove any existing image:
+
+   ```bash
+   docker rmi vulnerable-webapp || true
+   ```
+
+3. Build the Docker image:
+
+   ```bash
+   docker build --no-cache -t vulnerable-webapp .
+   ```
+
+4. Run the container:
 
    ```bash
    docker run -p 5001:5001 vulnerable-webapp
    ```
 
-3. Access the application at http://localhost:5001
+5. Access the application at http://localhost:5001
 
 ## Security Notice
 

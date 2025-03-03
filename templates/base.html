@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}SimpleChat{% endblock %}</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <!-- Inline critical CSS for faster rendering -->
+    <style>
+      :root {
+        --color-primary: #3897f0;
+        --color-dark: #262626;
+        --color-light: #fafafa;
+        --color-gray: #8e8e8e;
+        --color-border: #dbdbdb;
+        --color-success: #2ecc71;
+      }
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          Roboto, sans-serif;
+        background-color: var(--color-light);
+        margin: 0;
+        padding: 0;
+      }
+      .bg-white {
+        background-color: white;
+      }
+      .bg-light {
+        background-color: var(--color-light);
+      }
+      .text-primary {
+        color: var(--color-primary);
+      }
+      .text-dark {
+        color: var(--color-dark);
+      }
+      .text-gray {
+        color: var(--color-gray);
+      }
+      .border-border {
+        border-color: var(--color-border);
+      }
+      .border-b {
+        border-bottom-width: 1px;
+        border-bottom-style: solid;
+      }
+      .flex {
+        display: flex;
+      }
+      .flex-col {
+        flex-direction: column;
+      }
+      .items-center {
+        align-items: center;
+      }
+      .justify-between {
+        justify-content: space-between;
+      }
+      .h-screen {
+        height: 100vh;
+      }
+      .h-16 {
+        height: 4rem;
+      }
+      .px-6 {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+      }
+      .space-x-4 > * + * {
+        margin-left: 1rem;
+      }
+      .space-x-2 > * + * {
+        margin-left: 0.5rem;
+      }
+      .w-8 {
+        width: 2rem;
+      }
+      .h-8 {
+        height: 2rem;
+      }
+      .rounded-full {
+        border-radius: 9999px;
+      }
+      .text-xl {
+        font-size: 1.25rem;
+      }
+      .font-bold {
+        font-weight: 700;
+      }
+      .text-sm {
+        font-size: 0.875rem;
+      }
+      .hover\:underline:hover {
+        text-decoration: underline;
+      }
+      .sticky {
+        position: sticky;
+      }
+      .top-0 {
+        top: 0;
+      }
+      .z-10 {
+        z-index: 10;
+      }
+      .flex-1 {
+        flex: 1 1 0%;
+      }
+      .overflow-hidden {
+        overflow: hidden;
+      }
+      .cursor-pointer {
+        cursor: pointer;
+      }
+      .object-cover {
+        object-fit: cover;
+      }
+      .relative {
+        position: relative;
+      }
+      .group:hover .group-hover\:block {
+        display: block;
+      }
+      .hidden {
+        display: none;
+      }
+      .absolute {
+        position: absolute;
+      }
+      .right-0 {
+        right: 0;
+      }
+      .top-full {
+        top: 100%;
+      }
+      .mt-2 {
+        margin-top: 0.5rem;
+      }
+      .w-48 {
+        width: 12rem;
+      }
+      .rounded-lg {
+        border-radius: 0.5rem;
+      }
+      .shadow-md {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+      .block {
+        display: block;
+      }
+      .px-4 {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+      .py-2 {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+      }
+      .hover\:bg-gray-100:hover {
+        background-color: #f3f4f6;
+      }
+      .z-20 {
+        z-index: 20;
+      }
+
+      /* Simple Font Awesome replacement icons */
+      .icon {
+        display: inline-block;
+        width: 1em;
+        height: 1em;
+        margin-right: 0.25rem;
+        vertical-align: -0.125em;
+      }
+      .icon-sign-in::before {
+        content: "👤";
+      }
+      .icon-user-plus::before {
+        content: "➕";
+      }
+      .icon-paper-plane::before {
+        content: "📨";
+      }
+      .icon-check::before {
+        content: "✓";
+      }
+    </style>
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body class="bg-gray-100 min-h-screen">
+    <header class="bg-white shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex">
+            <div class="flex-shrink-0 flex items-center">
+              <a href="/" class="text-xl font-bold text-blue-500">SimpleChat</a>
+            </div>
+          </div>
+          <div class="flex items-center">
+            {% if current_user %}
+            <a
+              href="/messages"
+              class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >Messages</a
+            >
+            <a
+              href="/profile"
+              class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >Profile</a
+            >
+            <a
+              href="/logout"
+              class="ml-4 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-md text-sm font-medium"
+              >Logout</a
+            >
+            {% else %}
+            <a
+              href="/login"
+              class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >Login</a
+            >
+            <a
+              href="/register"
+              class="ml-4 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md text-sm font-medium"
+              >Register</a
+            >
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>{% block content %}{% endblock %}</main>
+
+    <footer class="bg-white mt-auto py-4 border-t border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <p class="text-center text-sm text-gray-500">
+          &copy; 2023 SimpleChat. All rights reserved.
+        </p>
+      </div>
+    </footer>
+
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

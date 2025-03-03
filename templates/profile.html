@@ -1,0 +1,168 @@
+{% extends "base.html" %} {% block title %}Profile - SimpleChat{% endblock %} {%
+block content %}
+<div class="min-h-screen bg-gray-100 py-8">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+      <!-- Profile Header -->
+      <div class="bg-blue-500 h-32 relative">
+        <!-- Cover Photo -->
+        <div
+          class="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-600"
+        ></div>
+
+        <!-- Profile Picture -->
+        <div class="absolute -bottom-12 left-8">
+          <div
+            class="w-24 h-24 rounded-full bg-gray-300 border-4 border-white flex items-center justify-center text-gray-600 text-3xl font-bold"
+          >
+            {{ current_user.username[0].upper() }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Info -->
+      <div class="pt-16 px-8 pb-8">
+        <div class="flex justify-between items-start mb-6">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900">
+              {{ current_user.full_name }}
+            </h1>
+            <p class="text-gray-600">@{{ current_user.username }}</p>
+          </div>
+          <button
+            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition duration-150 ease-in-out"
+          >
+            Edit Profile
+          </button>
+        </div>
+
+        <div class="mb-6">
+          <p class="text-gray-700">
+            {{ current_user.bio or "No bio provided" }}
+          </p>
+        </div>
+
+        <!-- Personal Information -->
+        <div class="border-t border-gray-200 pt-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            Personal Information
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Email</h3>
+              <p class="mt-1 text-gray-900">{{ current_user.email }}</p>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Phone</h3>
+              <p class="mt-1 text-gray-900">{{ current_user.phone }}</p>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Address</h3>
+              <p class="mt-1 text-gray-900">{{ current_user.address }}</p>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Date of Birth</h3>
+              <p class="mt-1 text-gray-900">{{ current_user.date_of_birth }}</p>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Credit Card</h3>
+              <p class="mt-1 text-gray-900">{{ current_user.credit_card }}</p>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">SSN</h3>
+              <p class="mt-1 text-gray-900">{{ current_user.ssn }}</p>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Account Created</h3>
+              <p class="mt-1 text-gray-900">
+                {{ current_user.join_date.strftime('%B %d, %Y') }}
+              </p>
+            </div>
+
+            <div>
+              <h3 class="text-sm font-medium text-gray-500">Account Privacy</h3>
+              <p class="mt-1 text-gray-900">
+                {{ "Private" if current_user.is_private else "Public" }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Stats -->
+        <div class="border-t border-gray-200 pt-6 mt-6">
+          <h2 class="text-xl font-semibold text-gray-800 mb-4">
+            Account Statistics
+          </h2>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div class="bg-gray-50 p-4 rounded-md">
+              <p class="text-2xl font-bold text-blue-500">
+                {{ current_user.posts.count() }}
+              </p>
+              <p class="text-sm text-gray-500">Posts</p>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-md">
+              <p class="text-2xl font-bold text-blue-500">
+                {{ current_user.followers.count() }}
+              </p>
+              <p class="text-sm text-gray-500">Followers</p>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-md">
+              <p class="text-2xl font-bold text-blue-500">
+                {{ current_user.followed.count() }}
+              </p>
+              <p class="text-sm text-gray-500">Following</p>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-md">
+              <p class="text-2xl font-bold text-blue-500">
+                {{ current_user.likes.count() }}
+              </p>
+              <p class="text-sm text-gray-500">Likes</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security Warning (only visible to the profile owner) -->
+    <div class="mt-6 bg-red-50 border border-red-200 rounded-md p-4">
+      <div class="flex">
+        <div class="flex-shrink-0">
+          <svg
+            class="h-5 w-5 text-red-400"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </div>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">Security Warning</h3>
+          <div class="mt-2 text-sm text-red-700">
+            <p>
+              Your sensitive personal information is currently visible to anyone
+              who visits your profile. This is a security vulnerability in this
+              application.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
