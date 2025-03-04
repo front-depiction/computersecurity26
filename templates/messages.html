@@ -91,12 +91,14 @@
         <div
           class="{% if message.sender_id == current_user.id %}bg-blue-500 text-white{% else %}bg-white text-gray-800 border border-gray-300{% endif %} rounded-lg px-4 py-2 max-w-xs lg:max-w-md shadow-sm"
         >
-          <p>{{ message.content }}</p>
+          <!-- VULNERABLE: Using the 'safe' filter allows XSS attacks -->
+          <p>{{ message.content | safe }}</p>
           <p
             class="text-xs {% if message.sender_id == current_user.id %}text-blue-100{% else %}text-gray-500{% endif %} text-right mt-1"
           >
-            {{ message.timestamp.strftime('%H:%M') if message.timestamp else ''
-            }}
+            {% if message.timestamp %} {% if message.timestamp is string %} {{
+            message.timestamp }} {% else %} {{
+            message.timestamp.strftime('%H:%M') }} {% endif %} {% endif %}
           </p>
         </div>
       </div>

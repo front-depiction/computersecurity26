@@ -47,9 +47,11 @@ This web application is designed for educational purposes ONLY. It contains nume
 1. Run all commands at once:
 
    ```bash
+   docker ps --filter "publish=5001" --format "{{.ID}}" | xargs -r docker stop && \
+   docker rm vulnerable-webapp || true && \
    docker rmi vulnerable-webapp || true && \
    docker build --no-cache -t vulnerable-webapp . && \
-   docker run -p 5001:5001 vulnerable-webapp
+   docker run -p 5001:5001 --name vulnerable-webapp vulnerable-webapp
    ```
 
    Or run each step individually:

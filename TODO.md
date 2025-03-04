@@ -20,8 +20,8 @@ SimpleChat is a simple messaging platform where users can:
 - [x] Private messaging system
 - [x] Conversation list
 - [x] Real-time message display
-- [ ] User search functionality
-- [ ] Message notifications
+- [x] User search functionality
+- [x] Message notifications
 
 ### 2. UI Components
 
@@ -50,11 +50,11 @@ The application has been simplified from a full social media platform (PixelShar
 
 ## Next Steps
 
-- [ ] Clean up the backend code to remove unused functionality
-- [ ] Optimize database queries for messaging
-- [ ] Implement user search functionality
-- [ ] Add message notifications
-- [ ] Improve error handling and user feedback
+- [x] Clean up the backend code to remove unused functionality
+- [x] Optimize database queries for messaging
+- [x] Implement user search functionality
+- [x] Add message notifications
+- [x] Improve error handling and user feedback
 - [ ] Add unit tests for core functionality
 
 ## Security Considerations
@@ -66,6 +66,29 @@ While this is a simplified application, we should still address basic security c
 - [ ] Validate user input
 - [ ] Implement rate limiting for login attempts
 - [ ] Secure session management
+
+## Vulnerability Testing
+
+We've implemented automated tests for the following vulnerabilities:
+
+- [x] SQL Injection (login and search)
+- [x] Cross-Site Scripting (XSS) in messages
+- [x] Cross-Site Request Forgery (CSRF) in password change
+- [x] Unrestricted file upload
+- [x] Server-Side Request Forgery (SSRF) in profile picture URL
+- [x] Sensitive data exposure in user profiles
+- [x] Cookie manipulation for authentication
+- [x] Predictable conversation hashes
+- [x] Debug mode and information disclosure
+- [x] Default credentials
+
+Additional tests to implement:
+
+- [ ] Session fixation
+- [ ] Insecure direct object references (IDOR)
+- [ ] Command injection
+- [ ] Weak cryptography
+- [ ] Backup file disclosure
 
 ---
 
