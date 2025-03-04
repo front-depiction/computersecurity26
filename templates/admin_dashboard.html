@@ -1,0 +1,337 @@
+{% extends "base.html" %} {% block title %}Admin Dashboard - SimpleChat{%
+endblock %} {% block extra_css %}
+<style>
+  .admin-panel {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+  }
+  .admin-header {
+    background-color: #dc3545;
+    color: white;
+    padding: 15px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+  }
+  .user-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .user-table th,
+  .user-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  .user-table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+  }
+  .user-table tr:hover {
+    background-color: #f5f5f5;
+  }
+  .action-btn {
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-right: 5px;
+  }
+  .edit-btn {
+    background-color: #ffc107;
+    color: #212529;
+    border: none;
+  }
+  .delete-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+  }
+  .save-btn {
+    background-color: #28a745;
+    color: white;
+    border: none;
+  }
+  .editable-cell input {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="admin-panel">
+    <div class="admin-header">
+      <h1 class="text-2xl font-bold">Admin Dashboard</h1>
+      <p>
+        Welcome, {{ current_user.username }}! You have full access to all user
+        data.
+      </p>
+    </div>
+
+    <div class="p-4">
+      <h2 class="text-xl font-semibold mb-4">User Management</h2>
+
+      <div class="overflow-x-auto">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Password</th>
+              <th>Full Name</th>
+              <th>Address</th>
+              <th>Phone</th>
+              <th>Credit Card</th>
+              <th>SSN</th>
+              <th>DOB</th>
+              <th>Admin</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+            {% for user in users %}
+            <tr data-user-id="{{ user.id }}">
+              <td>{{ user.id }}</td>
+              <td class="username-cell">{{ user.username }}</td>
+              <td class="email-cell">{{ user.email }}</td>
+              <td class="password-cell">{{ user.password }}</td>
+              <td class="fullname-cell">{{ user.full_name }}</td>
+              <td class="address-cell">{{ user.address }}</td>
+              <td class="phone-cell">{{ user.phone }}</td>
+              <td class="cc-cell">{{ user.credit_card }}</td>
+              <td class="ssn-cell">{{ user.ssn }}</td>
+              <td class="dob-cell">{{ user.date_of_birth }}</td>
+              <td class="admin-cell">{{ user.is_admin }}</td>
+              <td>
+                <button
+                  class="action-btn edit-btn"
+                  onclick="editUser('{{ user.id }}')"
+                >
+                  Edit
+                </button>
+                <button
+                  class="action-btn delete-btn"
+                  onclick="deleteUser('{{ user.id }}')"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-panel">
+    <div class="admin-header">
+      <h1 class="text-2xl font-bold">Database Operations</h1>
+    </div>
+
+    <div class="p-4">
+      <h2 class="text-xl font-semibold mb-4">Execute SQL Query</h2>
+      <div class="mb-4">
+        <textarea
+          id="sqlQuery"
+          class="w-full p-2 border border-gray-300 rounded"
+          rows="4"
+          placeholder="Enter SQL query here..."
+        ></textarea>
+      </div>
+      <button
+        id="executeQuery"
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+      >
+        Execute Query
+      </button>
+
+      <div class="mt-4">
+        <h3 class="text-lg font-medium mb-2">Query Results</h3>
+        <div
+          id="queryResults"
+          class="bg-gray-100 p-4 rounded min-h-[100px] overflow-x-auto"
+        >
+          <p class="text-gray-500">Results will appear here...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  function editUser(userId) {
+    const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+    const cells = row.querySelectorAll("td");
+
+    // Skip ID cell and Actions cell
+    for (let i = 1; i < cells.length - 1; i++) {
+      const cell = cells[i];
+      const currentValue = cell.textContent;
+      cell.innerHTML = `<input type="text" value="${currentValue}" />`;
+    }
+
+    // Change edit button to save button
+    const actionCell = cells[cells.length - 1];
+    actionCell.innerHTML = `
+      <button class="action-btn save-btn" onclick="saveUser('${userId}')">Save</button>
+      <button class="action-btn delete-btn" onclick="cancelEdit('${userId}')">Cancel</button>
+    `;
+  }
+
+  function saveUser(userId) {
+    const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+    const cells = row.querySelectorAll("td");
+
+    const userData = {
+      id: userId,
+      username: cells[1].querySelector("input").value,
+      email: cells[2].querySelector("input").value,
+      password: cells[3].querySelector("input").value,
+      full_name: cells[4].querySelector("input").value,
+      address: cells[5].querySelector("input").value,
+      phone: cells[6].querySelector("input").value,
+      credit_card: cells[7].querySelector("input").value,
+      ssn: cells[8].querySelector("input").value,
+      date_of_birth: cells[9].querySelector("input").value,
+      is_admin:
+        cells[10].querySelector("input").value === "True" ||
+        cells[10].querySelector("input").value === "true",
+    };
+
+    // Send update request to server
+    fetch("/admin/update_user", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(userData),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          // Update the row with new values
+          cells[1].textContent = userData.username;
+          cells[2].textContent = userData.email;
+          cells[3].textContent = userData.password;
+          cells[4].textContent = userData.full_name;
+          cells[5].textContent = userData.address;
+          cells[6].textContent = userData.phone;
+          cells[7].textContent = userData.credit_card;
+          cells[8].textContent = userData.ssn;
+          cells[9].textContent = userData.date_of_birth;
+          cells[10].textContent = userData.is_admin.toString();
+
+          // Restore action buttons
+          cells[cells.length - 1].innerHTML = `
+          <button class="action-btn edit-btn" onclick="editUser('${userId}')">Edit</button>
+          <button class="action-btn delete-btn" onclick="deleteUser('${userId}')">Delete</button>
+        `;
+
+          alert("User updated successfully!");
+        } else {
+          alert("Error updating user: " + data.error);
+        }
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        alert("An error occurred while updating the user.");
+      });
+  }
+
+  function cancelEdit(userId) {
+    // Reload the page to cancel the edit
+    location.reload();
+  }
+
+  function deleteUser(userId) {
+    if (confirm("Are you sure you want to delete this user?")) {
+      fetch(`/admin/delete_user/${userId}`, {
+        method: "DELETE",
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            // Remove the row from the table
+            const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+            row.remove();
+            alert("User deleted successfully!");
+          } else {
+            alert("Error deleting user: " + data.error);
+          }
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          alert("An error occurred while deleting the user.");
+        });
+    }
+  }
+
+  // SQL Query execution
+  document
+    .getElementById("executeQuery")
+    .addEventListener("click", function () {
+      const query = document.getElementById("sqlQuery").value;
+      if (!query) {
+        alert("Please enter a SQL query");
+        return;
+      }
+
+      fetch("/admin/execute_sql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          const resultsDiv = document.getElementById("queryResults");
+
+          if (data.error) {
+            resultsDiv.innerHTML = `<p class="text-red-500">Error: ${data.error}</p>`;
+            return;
+          }
+
+          if (data.results.length === 0) {
+            resultsDiv.innerHTML = `<p>Query executed successfully. No results returned.</p>`;
+            return;
+          }
+
+          // Create table for results
+          let tableHtml =
+            '<table class="w-full border-collapse border border-gray-300">';
+
+          // Table headers
+          tableHtml += "<thead><tr>";
+          for (const key in data.results[0]) {
+            tableHtml += `<th class="border border-gray-300 p-2 bg-gray-200">${key}</th>`;
+          }
+          tableHtml += "</tr></thead>";
+
+          // Table body
+          tableHtml += "<tbody>";
+          data.results.forEach((row) => {
+            tableHtml += "<tr>";
+            for (const key in row) {
+              tableHtml += `<td class="border border-gray-300 p-2">${row[key]}</td>`;
+            }
+            tableHtml += "</tr>";
+          });
+          tableHtml += "</tbody></table>";
+
+          resultsDiv.innerHTML = tableHtml;
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          document.getElementById(
+            "queryResults"
+          ).innerHTML = `<p class="text-red-500">An error occurred: ${error.message}</p>`;
+        });
+    });
+</script>
+{% endblock %}

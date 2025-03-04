@@ -47,6 +47,7 @@ class User(db.Model):
     cover_photo = db.Column(db.String(200), nullable=True, default='default_cover.jpg')
     join_date = db.Column(db.DateTime, default=datetime.utcnow)
     is_private = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=False)  # New field to track admin status
     
     # Relationships
     posts = db.relationship('Post', backref='author', lazy='dynamic', cascade='all, delete-orphan')
@@ -174,7 +175,8 @@ def init_db():
                     profile_picture='default_avatar.jpg',
                     cover_photo='default_cover.jpg',
                     join_date=datetime.utcnow(),
-                    is_private=False
+                    is_private=False,
+                    is_admin=True
                 )
                 
                 user = User(
@@ -191,7 +193,8 @@ def init_db():
                     profile_picture='default_avatar.jpg',
                     cover_photo='default_cover.jpg',
                     join_date=datetime.utcnow(),
-                    is_private=False
+                    is_private=False,
+                    is_admin=False
                 )
                 
                 # Add more test users
@@ -209,7 +212,8 @@ def init_db():
                     profile_picture='default_avatar.jpg',
                     cover_photo='default_cover.jpg',
                     join_date=datetime.utcnow(),
-                    is_private=False
+                    is_private=False,
+                    is_admin=False
                 )
                 
                 bob = User(
@@ -226,7 +230,8 @@ def init_db():
                     profile_picture='default_avatar.jpg',
                     cover_photo='default_cover.jpg',
                     join_date=datetime.utcnow(),
-                    is_private=False
+                    is_private=False,
+                    is_admin=False
                 )
                 
                 charlie = User(
@@ -243,7 +248,8 @@ def init_db():
                     profile_picture='default_avatar.jpg',
                     cover_photo='default_cover.jpg',
                     join_date=datetime.utcnow(),
-                    is_private=False
+                    is_private=False,
+                    is_admin=False
                 )
                 
                 db.session.add_all([admin, user, alice, bob, charlie])
@@ -401,7 +407,8 @@ def init_db():
                                 profile_picture='default_avatar.jpg',
                                 cover_photo='default_cover.jpg',
                                 join_date=datetime.utcnow(),
-                                is_private=False
+                                is_private=False,
+                                is_admin=False
                             )
                             db.session.add(user)
                         except Exception as e:
@@ -445,7 +452,8 @@ def init_db():
                             profile_picture='default_avatar.jpg',
                             cover_photo='default_cover.jpg',
                             join_date=datetime.utcnow(),
-                            is_private=False
+                            is_private=False,
+                            is_admin=True
                         )
                         db.session.add(admin)
                         
@@ -464,7 +472,8 @@ def init_db():
                             profile_picture='default_avatar.jpg',
                             cover_photo='default_cover.jpg',
                             join_date=datetime.utcnow(),
-                            is_private=False
+                            is_private=False,
+                            is_admin=False
                         )
                         db.session.add(demo)
                         db.session.commit()
@@ -491,27 +500,31 @@ def add_insecure_headers(response):
 
 # Helper function to check if user is logged in
 def is_logged_in():
-    return 'username' in session
+    # Changed from session check to cookie check for consistency
+    return request.cookies.get('current_user') is not None
 
 # Helper function to get current user
 def get_current_user():
     # Vulnerable: Using plain text cookies for authentication
-    username = request.cookies.get('current_user')
-    if username:
-        # Vulnerable: No validation of the cookie value
-        # Simply trust whatever username is in the cookie
+    user_data_json = request.cookies.get('current_user')
+    if user_data_json:
         try:
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM user WHERE username = ?", (username,))
-            user = cursor.fetchone()
-            conn.close()
+            # Parse the JSON data from the cookie
+            user_data = json.loads(user_data_json)
+            username = user_data.get('username')
             
-            if user:
-                # Convert to dictionary for easier access
-                columns = [column[0] for column in cursor.description]
-                user_dict = {columns[i]: user[i] for i in range(len(columns))}
-                return user_dict
+            if username:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM user WHERE username = ?", (username,))
+                user = cursor.fetchone()
+                conn.close()
+                
+                if user:
+                    # Convert to dictionary for easier access
+                    columns = [column[0] for column in cursor.description]
+                    user_dict = {columns[i]: user[i] for i in range(len(columns))}
+                    return user_dict
             return None
         except Exception as e:
             print(f"Error in get_current_user: {str(e)}")
@@ -547,38 +560,45 @@ def ensure_user_object(user):
 
 @app.route('/')
 def index():
-    # Render the index template instead of redirecting
     current_user = ensure_user_object(get_current_user())
     return render_template('index.html', current_user=current_user)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if request.method == 'GET':
+        return render_template('login.html', current_user=None)
+    
     error = None
+    
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
+        username = request.form.get('username')
+        password = request.form.get('password')
         
-        try:
-            # Vulnerable: Direct string concatenation in SQL query
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            query = f"SELECT * FROM user WHERE username = '{username}' AND password = '{password}'"
-            print(f"Executing query: {query}")  # Debug log
-            cursor.execute(query)
-            user = cursor.fetchone()
-            conn.close()
+        if not username or not password:
+            error = 'Username and password are required'
+        else:
+            user = User.query.filter_by(username=username).first()
             
-            if user:
-                # Set cookies for authentication
-                resp = make_response(redirect('/messages'))
-                resp.set_cookie('current_user', username)
-                resp.set_cookie('is_admin', 'true' if username == 'admin' else 'false')
-                return resp
+            if user and user.password == password:  # Intentionally not using secure password comparison
+                # Create a response with a redirect
+                response = make_response(redirect('/'))
+                
+                # Store user info in a cookie
+                user_data = {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email
+                }
+                
+                response.set_cookie('current_user', json.dumps(user_data))
+                
+                # Set admin cookie based on user's admin status in the database
+                if user.is_admin:
+                    response.set_cookie('is_admin', 'true')
+                
+                return response
             else:
-                error = 'Invalid credentials. Please try again.'
-        except Exception as e:
-            print(f"Login error: {str(e)}")
-            error = f"An error occurred: {str(e)}"
+                error = 'Invalid username or password'
     
     return render_template('login.html', error=error)
 
@@ -592,6 +612,9 @@ def logout():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
+    if request.method == 'GET':
+        return render_template('register.html', current_user=None)
+    
     if request.method == 'POST':
         # Get form data
         username = request.form['username']
@@ -679,6 +702,7 @@ def profile():
     current_user = ensure_user_object(get_current_user())
     if not current_user:
         return redirect('/login')
+    
     return render_template('profile.html', current_user=current_user)
 
 @app.route('/profile/<username>')
@@ -908,200 +932,104 @@ def messages():
     if not current_user:
         return redirect('/login')
     
-    try:
-        # Get all conversations for the current user
-        sent_messages = Message.query.filter_by(sender_id=current_user.id).all()
-        received_messages = Message.query.filter_by(recipient_id=current_user.id).all()
-        
-        # Combine all messages
-        all_messages = sent_messages + received_messages
-        
-        if not all_messages:
-            # No messages yet
-            return render_template('messages.html', 
-                                conversations=[], 
-                                current_user=current_user,
-                                active_user=None)
-        
-        # Get unique conversation partners
-        conversation_partners = set()
-        for message in all_messages:
-            if message.sender_id == current_user.id:
-                conversation_partners.add(message.recipient_id)
-            else:
-                conversation_partners.add(message.sender_id)
-        
-        # Get the most recent message for each conversation
-        conversations = []
-        for partner_id in conversation_partners:
-            partner = User.query.get(partner_id)
-            if not partner:
-                print(f"Warning: User with ID {partner_id} not found")
-                continue
-                
-            # Get the most recent message between these users
-            most_recent = Message.query.filter(
-                ((Message.sender_id == current_user.id) & (Message.recipient_id == partner_id)) |
-                ((Message.sender_id == partner_id) & (Message.recipient_id == current_user.id))
-            ).order_by(Message.timestamp.desc()).first()
-            
-            if not most_recent:
-                print(f"Warning: No messages found between {current_user.username} and user ID {partner_id}")
-                continue
-            
-            # Count unread messages
-            unread_count = Message.query.filter_by(
-                sender_id=partner_id,
-                recipient_id=current_user.id,
-                is_read=False
-            ).count()
-            
-            # Format the message preview
-            message_preview = most_recent.content
-            if len(message_preview) > 30:
-                message_preview = message_preview[:30] + '...'
-            
-            conversations.append({
-                'user_id': partner_id,
-                'username': partner.username,
-                'last_message': message_preview,
-                'timestamp': most_recent.timestamp.strftime('%m/%d/%Y'),
-                'unread': unread_count if unread_count > 0 else None
-            })
-        
-        # Sort conversations by most recent message
-        if conversations:
-            conversations.sort(key=lambda x: Message.query.filter(
-                ((Message.sender_id == current_user.id) & (Message.recipient_id == x['user_id'])) |
-                ((Message.sender_id == x['user_id']) & (Message.recipient_id == current_user.id))
-            ).order_by(Message.timestamp.desc()).first().timestamp, reverse=True)
-        
-        return render_template('messages.html', 
-                            conversations=conversations, 
-                            current_user=current_user,
-                            active_user=None)
-    except Exception as e:
-        print(f"Error in messages view: {str(e)}")
-        import traceback
-        print(traceback.format_exc())
-        flash("There was an error loading your messages. Please try again.")
-        return render_template('messages.html', 
-                            conversations=[], 
-                            current_user=current_user,
-                            active_user=None)
+    conversations = get_conversations_for_user(current_user.id)
+    return render_template('messages.html', conversations=conversations, current_user=current_user)
 
 @app.route('/messages/<username>', methods=['GET', 'POST'])
 def conversation(username):
-    if not is_logged_in():
-        return redirect('/login')
-    
     current_user = ensure_user_object(get_current_user())
     if not current_user:
         return redirect('/login')
     
     # Get the other user
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM user WHERE username = ?", (username,))
-        other_user_data = cursor.fetchone()
-        
-        if not other_user_data:
-            return "User not found", 404
-        
-        # Convert to dictionary
-        columns = [column[0] for column in cursor.description]
-        other_user = {columns[i]: other_user_data[i] for i in range(len(columns))}
-        
-        # Handle message sending (POST request)
-        if request.method == 'POST':
-            message_content = request.form.get('message', '').strip()
-            if not message_content:
-                message_content = request.form.get('content', '').strip()  # Try alternative field name
-                
-            if message_content:
-                try:
-                    # Get current user ID - handle both User objects and dictionaries
-                    current_user_id = current_user.id if hasattr(current_user, 'id') else current_user['id']
-                    
-                    # Vulnerable: No escaping of message content (XSS)
-                    # Store the raw message content without any sanitization
-                    cursor.execute(
-                        "INSERT INTO message (sender_id, recipient_id, content, timestamp, is_read) VALUES (?, ?, ?, ?, ?)",
-                        (current_user_id, other_user['id'], message_content, datetime.utcnow(), False)
-                    )
-                    
-                    # Create notification for the recipient
-                    current_username = current_user.username if hasattr(current_user, 'username') else current_user['username']
-                    notification_content = f"New message from {current_username}"
-                    cursor.execute(
-                        "INSERT INTO notification (user_id, content, timestamp, is_read, notification_type, related_id) VALUES (?, ?, ?, ?, ?, ?)",
-                        (other_user['id'], notification_content, datetime.utcnow(), False, 'message', current_user_id)
-                    )
-                    
-                    conn.commit()
-                    print(f"Message sent successfully: {message_content}")
-                except Exception as e:
-                    print(f"Error sending message: {str(e)}")
-                    conn.rollback()
-        
-        # Get all messages between the two users
-        current_user_id = current_user.id if hasattr(current_user, 'id') else current_user['id']
-        cursor.execute(
-            """
-            SELECT * FROM message 
-            WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
-            ORDER BY timestamp ASC
-            """,
-            (current_user_id, other_user['id'], other_user['id'], current_user_id)
-        )
-        messages_data = cursor.fetchall()
-        
-        # Convert to list of dictionaries
-        messages = []
-        for message_data in messages_data:
-            columns = [column[0] for column in cursor.description]
-            message = {columns[i]: message_data[i] for i in range(len(columns))}
-            
-            # Convert timestamp string to datetime object if it's a string
-            if 'timestamp' in message and message['timestamp'] and isinstance(message['timestamp'], str):
-                try:
-                    # Try to parse the timestamp string to a datetime object
-                    message['timestamp'] = datetime.strptime(message['timestamp'], '%Y-%m-%d %H:%M:%S.%f')
-                except (ValueError, TypeError):
-                    try:
-                        # Try alternative format without microseconds
-                        message['timestamp'] = datetime.strptime(message['timestamp'], '%Y-%m-%d %H:%M:%S')
-                    except (ValueError, TypeError):
-                        # If parsing fails, set to current time to avoid template errors
-                        message['timestamp'] = datetime.utcnow()
-            
-            # Mark messages as read
-            if message['recipient_id'] == current_user_id and not message['is_read']:
-                cursor.execute("UPDATE message SET is_read = ? WHERE id = ?", (True, message['id']))
-            
-            messages.append(message)
-        
-        conn.commit()
-        conn.close()
-        
-        # Get all conversations for the sidebar
-        conversations = get_conversations_for_user(current_user)
-        
-        return render_template(
-            'messages.html', 
-            current_user=current_user,
-            other_user=other_user,
-            messages=messages,
-            conversations=conversations,
-            active_user=other_user  # Make sure active_user is set
-        )
+    other_user = User.query.filter_by(username=username).first()
+    if not other_user:
+        flash("User not found.")
+        return redirect('/messages')
     
-    except Exception as e:
-        print(f"Error in conversation route: {str(e)}")
-        if 'conn' in locals():
-            conn.close()
-        return f"An error occurred: {str(e)}", 500
+    # Handle POST request for sending a message
+    if request.method == 'POST':
+        # Process message sending
+        message_content = request.form.get('message', '').strip()
+        if not message_content:
+            message_content = request.form.get('content', '').strip()  # Try alternative field name
+            
+        if message_content:
+            try:
+                # Get current user ID - handle both User objects and dictionaries
+                current_user_id = current_user.id if hasattr(current_user, 'id') else current_user['id']
+                
+                # Vulnerable: No escaping of message content (XSS)
+                # Store the raw message content without any sanitization
+                cursor.execute(
+                    "INSERT INTO message (sender_id, recipient_id, content, timestamp, is_read) VALUES (?, ?, ?, ?, ?)",
+                    (current_user_id, other_user['id'], message_content, datetime.utcnow(), False)
+                )
+                
+                # Create notification for the recipient
+                current_username = current_user.username if hasattr(current_user, 'username') else current_user['username']
+                notification_content = f"New message from {current_username}"
+                cursor.execute(
+                    "INSERT INTO notification (user_id, content, timestamp, is_read, notification_type, related_id) VALUES (?, ?, ?, ?, ?, ?)",
+                    (other_user['id'], notification_content, datetime.utcnow(), False, 'message', current_user_id)
+                )
+                
+                conn.commit()
+                print(f"Message sent successfully: {message_content}")
+            except Exception as e:
+                print(f"Error sending message: {str(e)}")
+                conn.rollback()
+    
+    # Get messages between the two users
+    current_user_id = current_user.id if hasattr(current_user, 'id') else current_user['id']
+    cursor.execute(
+        """
+        SELECT * FROM message 
+        WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
+        ORDER BY timestamp ASC
+        """,
+        (current_user_id, other_user['id'], other_user['id'], current_user_id)
+    )
+    messages_data = cursor.fetchall()
+    
+    # Convert to list of dictionaries
+    messages = []
+    for message_data in messages_data:
+        columns = [column[0] for column in cursor.description]
+        message = {columns[i]: message_data[i] for i in range(len(columns))}
+        
+        # Convert timestamp string to datetime object if it's a string
+        if 'timestamp' in message and message['timestamp'] and isinstance(message['timestamp'], str):
+            try:
+                # Try to parse the timestamp string to a datetime object
+                message['timestamp'] = datetime.strptime(message['timestamp'], '%Y-%m-%d %H:%M:%S.%f')
+            except (ValueError, TypeError):
+                try:
+                    # Try alternative format without microseconds
+                    message['timestamp'] = datetime.strptime(message['timestamp'], '%Y-%m-%d %H:%M:%S')
+                except (ValueError, TypeError):
+                    # If parsing fails, set to current time to avoid template errors
+                    message['timestamp'] = datetime.utcnow()
+        
+        # Mark messages as read - handle None values for is_read
+        if message['recipient_id'] == current_user_id:
+            # Check if is_read is False or None/null
+            if message.get('is_read') is None or message.get('is_read') == 0:
+                cursor.execute("UPDATE message SET is_read = ? WHERE id = ?", (True, message['id']))
+        
+        messages.append(message)
+    
+    conn.commit()
+    conn.close()
+    
+    # Get all conversations for sidebar
+    conversations = get_conversations_for_user(current_user.id)
+    
+    return render_template('messages.html', 
+                        conversations=conversations, 
+                        messages=messages, 
+                        active_user=other_user,
+                        current_user=current_user)
 
 @app.route('/send-message-vulnerable/<username>', methods=['POST'])
 def send_message_vulnerable(username):
@@ -1920,23 +1848,26 @@ def get_conversations_for_user(current_user):
                 content = content[:27] + "..."
             
             # Convert timestamp string to datetime if needed
-            if timestamp_str and isinstance(timestamp_str, str):
-                try:
-                    timestamp_obj = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S.%f')
-                    formatted_time = timestamp_obj.strftime('%H:%M')
-                except (ValueError, TypeError):
+            timestamp_obj = None
+            if timestamp_str:
+                if isinstance(timestamp_str, str):
                     try:
-                        timestamp_obj = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
-                        formatted_time = timestamp_obj.strftime('%H:%M')
+                        timestamp_obj = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S.%f')
                     except (ValueError, TypeError):
-                        formatted_time = "Unknown"
-            elif timestamp_str:
-                # If it's already a datetime object
-                try:
-                    formatted_time = timestamp_str.strftime('%H:%M')
-                except (AttributeError, TypeError):
-                    formatted_time = "Unknown"
+                        try:
+                            timestamp_obj = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                        except (ValueError, TypeError):
+                            timestamp_obj = datetime.utcnow()  # Fallback to current time
+                else:
+                    # If it's already a datetime object
+                    timestamp_obj = timestamp_str
             else:
+                timestamp_obj = datetime.utcnow()  # Fallback to current time
+            
+            # Format the time for display
+            try:
+                formatted_time = timestamp_obj.strftime('%H:%M')
+            except (AttributeError, TypeError):
                 formatted_time = "Unknown"
             
             # Count unread messages
@@ -1946,18 +1877,25 @@ def get_conversations_for_user(current_user):
                 WHERE sender_id = ? AND recipient_id = ? AND is_read = 0
             """, (partner_id, current_user_id))
             
-            unread_count = cursor.fetchone()[0]
+            unread_count_result = cursor.fetchone()
+            unread_count = unread_count_result[0] if unread_count_result else 0
             
             conversations.append({
                 'user_id': partner_id,
                 'username': partner_username,
                 'last_message': content,
                 'timestamp': formatted_time,
+                'timestamp_obj': timestamp_obj,  # Store the actual datetime object for sorting
                 'unread': unread_count if unread_count > 0 else None
             })
         
-        # Sort conversations by the most recent message
-        conversations.sort(key=lambda x: x['timestamp'], reverse=True)
+        # Sort conversations by the timestamp_obj (actual datetime) instead of formatted string
+        conversations.sort(key=lambda x: x['timestamp_obj'] if x['timestamp_obj'] else datetime.min, reverse=True)
+        
+        # Remove the timestamp_obj from the dictionaries as it's not needed in the template
+        for convo in conversations:
+            if 'timestamp_obj' in convo:
+                del convo['timestamp_obj']
         
         conn.close()
         return conversations
@@ -2120,6 +2058,151 @@ def upload_file():
                     print(f"Error uploading file: {str(e)}")
     
     return render_template('upload_file.html', error=error, success=success, uploaded_file=uploaded_file, current_user=current_user)
+
+# Admin routes
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    """Admin dashboard that displays all user data - intentionally vulnerable"""
+    # Get current user
+    current_user = ensure_user_object(get_current_user())
+    
+    # Check if user is logged in and has admin privileges
+    if not current_user or not current_user.is_admin:
+        return redirect('/login')
+    
+    try:
+        # Get all users from database
+        users = User.query.all()
+        users_list = []
+        
+        for user in users:
+            users_list.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'password': user.password,  # Intentionally exposing passwords
+                'full_name': user.full_name,
+                'address': user.address,
+                'phone': user.phone,
+                'credit_card': user.credit_card,
+                'ssn': user.ssn,
+                'date_of_birth': user.date_of_birth,
+                'is_admin': user.is_admin  # Include admin status
+            })
+        
+        return render_template('admin_dashboard.html', users=users_list, current_user=current_user)
+    except Exception as e:
+        print(f"Error in admin dashboard: {str(e)}")
+        return str(e), 500
+
+@app.route('/admin/update_user', methods=['POST'])
+def admin_update_user():
+    """Update user data - intentionally vulnerable"""
+    # Get current user
+    current_user = ensure_user_object(get_current_user())
+    
+    # Check if user is logged in and has admin privileges
+    if not current_user or not current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        data = request.json
+        user_id = data.get('id')
+        
+        # Get user from database
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        # Update user data
+        user.username = data.get('username', user.username)
+        user.email = data.get('email', user.email)
+        user.password = data.get('password', user.password)  # Intentionally not hashing password
+        user.full_name = data.get('full_name', user.full_name)
+        user.address = data.get('address', user.address)
+        user.phone = data.get('phone', user.phone)
+        user.credit_card = data.get('credit_card', user.credit_card)
+        user.ssn = data.get('ssn', user.ssn)
+        user.date_of_birth = data.get('date_of_birth', user.date_of_birth)
+        user.is_admin = data.get('is_admin', user.is_admin)  # Update admin status
+        
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error updating user: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/delete_user/<int:user_id>', methods=['DELETE'])
+def admin_delete_user(user_id):
+    """Delete user - intentionally vulnerable"""
+    # Get current user
+    current_user = ensure_user_object(get_current_user())
+    
+    # Check if user is logged in and has admin privileges
+    if not current_user or not current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        # Get user from database
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        # Delete user
+        db.session.delete(user)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error deleting user: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/execute_sql', methods=['POST'])
+def admin_execute_sql():
+    """Execute SQL query - intentionally vulnerable to SQL injection"""
+    # Get current user
+    current_user = ensure_user_object(get_current_user())
+    
+    # Check if user is logged in and has admin privileges
+    if not current_user or not current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        data = request.json
+        query = data.get('query', '')
+        
+        if not query:
+            return jsonify({'success': False, 'error': 'No query provided'}), 400
+        
+        # Execute query directly without any sanitization (intentionally vulnerable)
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute(query)
+        
+        # Get column names
+        column_names = [description[0] for description in cursor.description] if cursor.description else []
+        
+        # Fetch results
+        results = []
+        for row in cursor.fetchall():
+            result = {}
+            for i, column in enumerate(column_names):
+                result[column] = row[i]
+            results.append(result)
+        
+        conn.close()
+        
+        return jsonify({'success': True, 'results': results})
+    except Exception as e:
+        if 'conn' in locals():
+            conn.close()
+        print(f"Error executing SQL query: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     init_db()

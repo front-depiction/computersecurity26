@@ -77,7 +77,8 @@ def create_users(num_users=100):
                         profile_picture='default_avatar.jpg',
                         cover_photo='default_cover.jpg',
                         join_date=datetime.utcnow() - timedelta(days=random.randint(1, 365)),
-                        is_private=random.random() < 0.2  # 20% chance of being private
+                        is_private=random.random() < 0.2,  # 20% chance of being private
+                        is_admin=False  # Explicitly set to False
                     )
                     new_users.append(user)
                     
@@ -224,7 +225,8 @@ def initialize_database():
                 profile_picture='default_avatar.jpg',
                 cover_photo='default_cover.jpg',
                 join_date=datetime.utcnow(),
-                is_private=False
+                is_private=False,
+                is_admin=True  # Set admin flag to True
             )
             db.session.add(admin)
             db.session.commit()
@@ -245,7 +247,8 @@ def initialize_database():
                 profile_picture='default_avatar.jpg',
                 cover_photo='default_cover.jpg',
                 join_date=datetime.utcnow(),
-                is_private=False
+                is_private=False,
+                is_admin=False  # Explicitly set to False
             )
             
             alice = User(
@@ -262,7 +265,8 @@ def initialize_database():
                 profile_picture='default_avatar.jpg',
                 cover_photo='default_cover.jpg',
                 join_date=datetime.utcnow(),
-                is_private=False
+                is_private=False,
+                is_admin=False  # Explicitly set to False
             )
             
             bob = User(
@@ -279,7 +283,8 @@ def initialize_database():
                 profile_picture='default_avatar.jpg',
                 cover_photo='default_cover.jpg',
                 join_date=datetime.utcnow(),
-                is_private=False
+                is_private=False,
+                is_admin=False  # Explicitly set to False
             )
             
             charlie = User(
@@ -296,7 +301,8 @@ def initialize_database():
                 profile_picture='default_avatar.jpg',
                 cover_photo='default_cover.jpg',
                 join_date=datetime.utcnow(),
-                is_private=False
+                is_private=False,
+                is_admin=False  # Explicitly set to False
             )
             
             db.session.add_all([user, alice, bob, charlie])

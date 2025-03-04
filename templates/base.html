@@ -163,6 +163,16 @@
         z-index: 20;
       }
 
+      /* Admin indicator */
+      .admin-badge {
+        background-color: #dc3545;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+      }
+
       /* Simple Font Awesome replacement icons */
       .icon {
         display: inline-block;
@@ -207,6 +217,14 @@
               class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
               >Profile</a
             >
+            <!-- Admin Dashboard Link - Only visible for admin users -->
+            {% if current_user.is_admin %}
+            <a
+              href="/admin/dashboard"
+              class="text-red-600 hover:text-red-800 px-3 py-2 rounded-md text-sm font-medium"
+              >Admin Dashboard <span class="admin-badge">ADMIN</span></a
+            >
+            {% endif %}
             <a
               href="/logout"
               class="ml-4 bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-md text-sm font-medium"
@@ -234,7 +252,7 @@
     <footer class="bg-white mt-auto py-4 border-t border-gray-200">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <p class="text-center text-sm text-gray-500">
-          &copy; 2023 SimpleChat. All rights reserved.
+          &copy; 2025 SimpleChat. All rights reserved.
         </p>
       </div>
     </footer>
