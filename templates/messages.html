@@ -16,14 +16,14 @@
     <div class="overflow-y-auto flex-grow">
       {% if conversations %} {% for convo in conversations %}
       <a
-        href="/conversation/{{ convo.user_id }}"
+        href="/messages/{{ convo.username }}"
         class="block border-b border-gray-200 hover:bg-gray-50 transition duration-150 ease-in-out {% if active_user and active_user.id == convo.user_id %}bg-blue-50{% endif %}"
       >
         <div class="p-4">
           <div class="flex justify-between items-start">
             <div class="flex items-center">
               <div
-                class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600"
+                class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-semibold"
               >
                 {{ convo.username[0].upper() }}
               </div>
@@ -34,10 +34,11 @@
                 </p>
               </div>
             </div>
-            <div class="text-xs text-gray-500">
-              {{ convo.timestamp }} {% if convo.unread %}
+            <div class="flex flex-col items-end">
+              <span class="text-xs text-gray-500">{{ convo.timestamp }}</span>
+              {% if convo.unread %}
               <span
-                class="ml-2 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
+                class="mt-1 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
                 >{{ convo.unread }}</span
               >
               {% endif %}
@@ -56,13 +57,26 @@
     {% if active_user %}
     <div class="p-4 border-b border-gray-300 bg-white flex items-center">
       <div
-        class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600"
+        class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-semibold"
       >
         {{ active_user.username[0].upper() }}
       </div>
       <div class="ml-3">
         <p class="font-medium text-gray-900">{{ active_user.username }}</p>
-        <p class="text-sm text-gray-500">{{ active_user.status }}</p>
+        <p class="text-sm text-gray-500">
+          {% if active_user.is_private %}
+          <span class="inline-flex items-center">
+            <svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fill-rule="evenodd"
+                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                clip-rule="evenodd"
+              ></path>
+            </svg>
+            Private Account
+          </span>
+          {% else %} Active now {% endif %}
+        </p>
       </div>
     </div>
 
@@ -75,26 +89,40 @@
         class="mb-4 {% if message.sender_id == current_user.id %}flex justify-end{% endif %}"
       >
         <div
-          class="{% if message.sender_id == current_user.id %}bg-blue-500 text-white{% else %}bg-white text-gray-800 border border-gray-300{% endif %} rounded-lg px-4 py-2 max-w-xs lg:max-w-md"
+          class="{% if message.sender_id == current_user.id %}bg-blue-500 text-white{% else %}bg-white text-gray-800 border border-gray-300{% endif %} rounded-lg px-4 py-2 max-w-xs lg:max-w-md shadow-sm"
         >
           <p>{{ message.content }}</p>
           <p
             class="text-xs {% if message.sender_id == current_user.id %}text-blue-100{% else %}text-gray-500{% endif %} text-right mt-1"
           >
-            {{ message.timestamp }}
+            {{ message.timestamp.strftime('%H:%M') if message.timestamp else ''
+            }}
           </p>
         </div>
       </div>
       {% endfor %} {% else %}
       <div class="text-center text-gray-500 mt-10">
-        No messages yet. Start the conversation!
+        <svg
+          class="mx-auto h-12 w-12 text-gray-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="1"
+            d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+          />
+        </svg>
+        <p class="mt-2">No messages yet. Start the conversation!</p>
       </div>
       {% endif %}
     </div>
 
     <form
       id="message-form"
-      action="/conversation/{{ active_user.id }}"
+      action="/messages/{{ active_user.username }}"
       method="post"
       class="p-4 bg-white border-t border-gray-300"
     >
@@ -104,11 +132,25 @@
           name="content"
           placeholder="Type a message..."
           class="flex-grow px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          autocomplete="off"
         />
         <button
           type="submit"
-          class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md transition duration-150 ease-in-out"
+          class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md transition duration-150 ease-in-out flex items-center"
         >
+          <svg
+            class="h-4 w-4 mr-1"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+            />
+          </svg>
           Send
         </button>
       </div>

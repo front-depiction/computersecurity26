@@ -16,6 +16,19 @@ from app.app import app, db, User, Message, followers
 
 fake = Faker()
 
+def reset_database():
+    """Drop all tables and recreate them to start with a clean database"""
+    with app.app_context():
+        try:
+            print("Dropping all tables...")
+            db.drop_all()
+            print("Creating all tables...")
+            db.create_all()
+            print("Database reset successfully!")
+        except Exception as e:
+            print(f"Error resetting database: {str(e)}")
+            traceback.print_exc()
+
 def generate_credit_card():
     """Generate a fake credit card number in the format XXXX-XXXX-XXXX-XXXX"""
     return '-'.join(''.join(random.choices(string.digits, k=4)) for _ in range(4))
@@ -195,104 +208,100 @@ def initialize_database():
             # Create tables if they don't exist
             db.create_all()
             
-            # Check if admin user exists
-            admin = User.query.filter_by(username='admin').first()
-            if not admin:
-                print("Creating default admin user...")
-                admin = User(
-                    username='admin',
-                    password='admin123',
-                    email='admin@example.com',
-                    full_name='Admin User',
-                    address='123 Admin St',
-                    phone='555-1234',
-                    credit_card='1234-5678-9012-3456',
-                    ssn='123-45-6789',
-                    date_of_birth='1990-01-01',
-                    bio='Admin user',
-                    profile_picture='default_avatar.jpg',
-                    cover_photo='default_cover.jpg',
-                    join_date=datetime.utcnow(),
-                    is_private=False
-                )
-                db.session.add(admin)
-                db.session.commit()
-                print("Admin user created successfully")
-                
-                # Add other default users
-                user = User(
-                    username='user',
-                    password='user123',
-                    email='user@example.com',
-                    full_name='Regular User',
-                    address='456 User St',
-                    phone='555-5678',
-                    credit_card='9876-5432-1098-7654',
-                    ssn='987-65-4321',
-                    date_of_birth='1995-05-05',
-                    bio='Regular user',
-                    profile_picture='default_avatar.jpg',
-                    cover_photo='default_cover.jpg',
-                    join_date=datetime.utcnow(),
-                    is_private=False
-                )
-                
-                alice = User(
-                    username='alice',
-                    password='alice123',
-                    email='alice@example.com',
-                    full_name='Alice Johnson',
-                    address='789 Alice Ave',
-                    phone='555-9012',
-                    credit_card='4567-8901-2345-6789',
-                    ssn='234-56-7890',
-                    date_of_birth='1992-03-15',
-                    bio='Hello, I am Alice!',
-                    profile_picture='default_avatar.jpg',
-                    cover_photo='default_cover.jpg',
-                    join_date=datetime.utcnow(),
-                    is_private=False
-                )
-                
-                bob = User(
-                    username='bob',
-                    password='bob123',
-                    email='bob@example.com',
-                    full_name='Bob Smith',
-                    address='101 Bob Blvd',
-                    phone='555-3456',
-                    credit_card='5678-9012-3456-7890',
-                    ssn='345-67-8901',
-                    date_of_birth='1988-07-22',
-                    bio='Hello, I am Bob!',
-                    profile_picture='default_avatar.jpg',
-                    cover_photo='default_cover.jpg',
-                    join_date=datetime.utcnow(),
-                    is_private=False
-                )
-                
-                charlie = User(
-                    username='charlie',
-                    password='charlie123',
-                    email='charlie@example.com',
-                    full_name='Charlie Brown',
-                    address='202 Charlie Ct',
-                    phone='555-7890',
-                    credit_card='6789-0123-4567-8901',
-                    ssn='456-78-9012',
-                    date_of_birth='1985-11-30',
-                    bio='Hello, I am Charlie!',
-                    profile_picture='default_avatar.jpg',
-                    cover_photo='default_cover.jpg',
-                    join_date=datetime.utcnow(),
-                    is_private=False
-                )
-                
-                db.session.add_all([user, alice, bob, charlie])
-                db.session.commit()
-                print("Default users created successfully")
-            else:
-                print("Admin user already exists, skipping initialization")
+            # Create admin user (always create it since we reset the database)
+            print("Creating default admin user...")
+            admin = User(
+                username='admin',
+                password='admin123',
+                email='admin@example.com',
+                full_name='Admin User',
+                address='123 Admin St',
+                phone='555-1234',
+                credit_card='1234-5678-9012-3456',
+                ssn='123-45-6789',
+                date_of_birth='1990-01-01',
+                bio='Admin user',
+                profile_picture='default_avatar.jpg',
+                cover_photo='default_cover.jpg',
+                join_date=datetime.utcnow(),
+                is_private=False
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Admin user created successfully")
+            
+            # Add other default users
+            user = User(
+                username='user',
+                password='user123',
+                email='user@example.com',
+                full_name='Regular User',
+                address='456 User St',
+                phone='555-5678',
+                credit_card='9876-5432-1098-7654',
+                ssn='987-65-4321',
+                date_of_birth='1995-05-05',
+                bio='Regular user',
+                profile_picture='default_avatar.jpg',
+                cover_photo='default_cover.jpg',
+                join_date=datetime.utcnow(),
+                is_private=False
+            )
+            
+            alice = User(
+                username='alice',
+                password='alice123',
+                email='alice@example.com',
+                full_name='Alice Johnson',
+                address='789 Alice Ave',
+                phone='555-9012',
+                credit_card='4567-8901-2345-6789',
+                ssn='234-56-7890',
+                date_of_birth='1992-03-15',
+                bio='Hello, I am Alice!',
+                profile_picture='default_avatar.jpg',
+                cover_photo='default_cover.jpg',
+                join_date=datetime.utcnow(),
+                is_private=False
+            )
+            
+            bob = User(
+                username='bob',
+                password='bob123',
+                email='bob@example.com',
+                full_name='Bob Smith',
+                address='101 Bob Blvd',
+                phone='555-3456',
+                credit_card='5678-9012-3456-7890',
+                ssn='345-67-8901',
+                date_of_birth='1988-07-22',
+                bio='Hello, I am Bob!',
+                profile_picture='default_avatar.jpg',
+                cover_photo='default_cover.jpg',
+                join_date=datetime.utcnow(),
+                is_private=False
+            )
+            
+            charlie = User(
+                username='charlie',
+                password='charlie123',
+                email='charlie@example.com',
+                full_name='Charlie Brown',
+                address='202 Charlie Ct',
+                phone='555-7890',
+                credit_card='6789-0123-4567-8901',
+                ssn='456-78-9012',
+                date_of_birth='1985-11-30',
+                bio='Hello, I am Charlie!',
+                profile_picture='default_avatar.jpg',
+                cover_photo='default_cover.jpg',
+                join_date=datetime.utcnow(),
+                is_private=False
+            )
+            
+            db.session.add_all([user, alice, bob, charlie])
+            db.session.commit()
+            print("Default users created successfully")
         except Exception as e:
             print(f"Error initializing database: {str(e)}")
             traceback.print_exc()
@@ -326,7 +335,10 @@ if __name__ == "__main__":
         except ValueError:
             print(f"Invalid number of users: {sys.argv[1]}. Using default: 100")
     
-    # First initialize the database with default users
+    # First reset the database completely
+    reset_database()
+    
+    # Then initialize the database with default users
     initialize_database()
     
     # Check if fake_users.json exists and print its contents

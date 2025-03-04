@@ -496,13 +496,82 @@ def is_logged_in():
 # Helper function to get current user
 def get_current_user():
     if not is_logged_in():
+        print("User is not logged in")
         return None
-    return User.query.filter_by(username=session['username']).first()
+    
+    try:
+        username = session['username']
+        print(f"Getting user for username: {username}")
+        
+        # Try to get the user from the database
+        user = User.query.filter_by(username=username).first()
+        
+        if user is None:
+            print(f"No user found for username: {username}")
+            return None
+        
+        # Check if user is a dictionary (this shouldn't happen, but let's handle it)
+        if isinstance(user, dict):
+            print(f"WARNING: User is a dictionary, not a User object: {user}")
+            # Try to convert dict to User object if needed
+            try:
+                # Create a User object from the dictionary
+                user_obj = User(
+                    username=user.get('username'),
+                    password=user.get('password', ''),
+                    email=user.get('email', ''),
+                    full_name=user.get('full_name', ''),
+                    address=user.get('address', ''),
+                    phone=user.get('phone', ''),
+                    credit_card=user.get('credit_card', ''),
+                    ssn=user.get('ssn', ''),
+                    date_of_birth=user.get('date_of_birth', '')
+                )
+                print(f"Created User object from dictionary: {user_obj.username}")
+                return user_obj
+            except Exception as e:
+                print(f"Error creating User object from dictionary: {str(e)}")
+                return None
+        
+        print(f"Found user: {user.username}")
+        return user
+    except Exception as e:
+        import traceback
+        print(f"Error in get_current_user: {str(e)}")
+        print(traceback.format_exc())
+        return None
+
+# Helper function to ensure current_user is a User object
+def ensure_user_object(user):
+    if user is None:
+        return None
+        
+    if isinstance(user, dict):
+        print(f"Converting dictionary to User object: {user}")
+        try:
+            # Create a User object from the dictionary
+            user_obj = User(
+                username=user.get('username'),
+                password=user.get('password', ''),
+                email=user.get('email', ''),
+                full_name=user.get('full_name', ''),
+                address=user.get('address', ''),
+                phone=user.get('phone', ''),
+                credit_card=user.get('credit_card', ''),
+                ssn=user.get('ssn', ''),
+                date_of_birth=user.get('date_of_birth', '')
+            )
+            return user_obj
+        except Exception as e:
+            print(f"Error converting dictionary to User object: {str(e)}")
+            return None
+    
+    return user
 
 @app.route('/')
 def index():
     # Render the index template instead of redirecting
-    current_user = get_current_user()
+    current_user = ensure_user_object(get_current_user())
     return render_template('index.html', current_user=current_user)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -511,6 +580,8 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
+        print(f"Login attempt for username: {username}")
+        
         try:
             # Use direct SQLite3 connection instead of SQLAlchemy
             conn = sqlite3.connect(db_path)
@@ -518,19 +589,28 @@ def login():
             
             # Vulnerable: Direct string formatting in SQL query
             query = f"SELECT * FROM user WHERE username='{username}' AND password='{password}'"
+            print(f"Executing SQL query: {query}")
             cursor.execute(query)
             result = cursor.fetchone()
             
             if result:
+                print(f"Login successful for user: {username}")
+                print(f"Result type: {type(result)}, Result: {result}")
+                
                 session['username'] = username
                 # Vulnerable: Set plain text cookies for user identification
                 resp = make_response(redirect('/messages'))  # Redirect to messages instead of feed
                 resp.set_cookie('is_admin', 'true' if username == 'admin' else 'false')
                 resp.set_cookie('current_user', username)  # Vulnerable: Plain text cookie
                 return resp
-            return 'Invalid credentials'
+            else:
+                print(f"Login failed for user: {username} - No matching user found")
+                return 'Invalid credentials'
         except Exception as e:
             # Make SQL errors visible for easier exploitation
+            print(f"Error during login: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             return str(e), 500
         finally:
             cursor.close()
@@ -598,21 +678,17 @@ def register():
 
 @app.route('/feed')
 def feed():
-    if not is_logged_in():
+    current_user = ensure_user_object(get_current_user())
+    if not current_user:
         return redirect('/login')
     
-    current_user = get_current_user()
-    if not current_user:
-        return redirect('/logout')
-    
-    # Get posts from users that the current user follows
+    # Get posts from followed users and own posts
     followed_posts = current_user.followed_posts()
-    
-    # Also get the current user's posts
-    own_posts = Post.query.filter_by(user_id=current_user.id).order_by(Post.timestamp.desc())
+    own_posts = Post.query.filter_by(user_id=current_user.id).all()
     
     # Combine and sort by timestamp
-    all_posts = followed_posts.union(own_posts).order_by(Post.timestamp.desc())
+    all_posts = list(followed_posts) + own_posts
+    all_posts.sort(key=lambda p: p.timestamp, reverse=True)
     
     return render_template('feed.html', 
                           posts=all_posts, 
@@ -620,16 +696,15 @@ def feed():
 
 @app.route('/explore')
 def explore():
-    if not is_logged_in():
+    current_user = ensure_user_object(get_current_user())
+    if not current_user:
         return redirect('/login')
     
-    current_user = get_current_user()
-    if not current_user:
-        return redirect('/logout')
-    
-    # Get all public posts, ordered by timestamp
-    # Vulnerable: Shows private posts too due to lack of filtering
-    posts = Post.query.order_by(Post.timestamp.desc()).limit(50)
+    # Get all public posts, excluding own posts
+    posts = Post.query.filter(
+        Post.is_private == False,
+        Post.user_id != current_user.id
+    ).order_by(Post.timestamp.desc()).all()
     
     return render_template('explore.html', 
                           posts=posts, 
@@ -637,23 +712,30 @@ def explore():
 
 @app.route('/profile')
 def profile():
-    current_user = get_current_user()
+    current_user = ensure_user_object(get_current_user())
     if not current_user:
         return redirect('/login')
     return render_template('profile.html', current_user=current_user)
 
 @app.route('/profile/<username>')
 def view_profile(username):
-    current_user = get_current_user()
+    current_user = ensure_user_object(get_current_user())
     if not current_user:
         return redirect('/login')
     
-    # Get the profile user - VULNERABLE: No access control
-    profile_user = User.query.filter_by(username=username).first_or_404()
+    user = User.query.filter_by(username=username).first_or_404()
     
-    # VULNERABLE: We're passing the entire user object with sensitive information
-    # to the template without any filtering
-    return render_template('profile.html', current_user=profile_user)
+    # Check if the profile is private and the current user is not following
+    if user.is_private and not current_user.is_following(user) and current_user.id != user.id:
+        flash("This profile is private. You need to follow this user to view their profile.")
+        return redirect('/explore')
+    
+    posts = Post.query.filter_by(user_id=user.id).order_by(Post.timestamp.desc()).all()
+    
+    return render_template('view_profile.html', 
+                          user=user, 
+                          posts=posts, 
+                          current_user=current_user)
 
 @app.route('/follow/<username>')
 def follow(username):
@@ -858,188 +940,309 @@ def add_comment(post_id):
 
 @app.route('/messages')
 def messages():
-    current_user = get_current_user()
+    current_user = ensure_user_object(get_current_user())
     if not current_user:
-        # If user is not logged in, still render the messages template
-        # The template will handle showing a login prompt
-        return render_template('messages.html', current_user=None, conversations=[], active_user=None, messages=[])
+        return redirect('/login')
     
-    # Get all conversations for the current user
-    conversations = db.session.query(User, Message) \
-        .join(Message, ((Message.sender_id == User.id) & (Message.recipient_id == current_user.id)) | 
-                      ((Message.recipient_id == User.id) & (Message.sender_id == current_user.id))) \
-        .filter(User.id != current_user.id) \
-        .group_by(User.id) \
-        .order_by(Message.timestamp.desc()) \
-        .all()
-    
-    # Format conversations for display
-    formatted_conversations = []
-    for user, last_message in conversations:
-        formatted_conversations.append({
-            'user': user,
-            'last_message': last_message.content[:50] + '...' if len(last_message.content) > 50 else last_message.content,
-            'last_message_time': last_message.timestamp.strftime('%H:%M'),
-            'last_message_is_mine': last_message.sender_id == current_user.id,
-            'unread': not last_message.is_read and last_message.recipient_id == current_user.id
-        })
-    
-    return render_template('messages.html', current_user=current_user, 
-                          conversations=formatted_conversations, active_user=None, messages=[])
+    try:
+        # Get all conversations for the current user
+        sent_messages = Message.query.filter_by(sender_id=current_user.id).all()
+        received_messages = Message.query.filter_by(recipient_id=current_user.id).all()
+        
+        # Combine all messages
+        all_messages = sent_messages + received_messages
+        
+        if not all_messages:
+            # No messages yet
+            return render_template('messages.html', 
+                                conversations=[], 
+                                current_user=current_user,
+                                active_user=None)
+        
+        # Get unique conversation partners
+        conversation_partners = set()
+        for message in all_messages:
+            if message.sender_id == current_user.id:
+                conversation_partners.add(message.recipient_id)
+            else:
+                conversation_partners.add(message.sender_id)
+        
+        # Get the most recent message for each conversation
+        conversations = []
+        for partner_id in conversation_partners:
+            partner = User.query.get(partner_id)
+            if not partner:
+                print(f"Warning: User with ID {partner_id} not found")
+                continue
+                
+            # Get the most recent message between these users
+            most_recent = Message.query.filter(
+                ((Message.sender_id == current_user.id) & (Message.recipient_id == partner_id)) |
+                ((Message.sender_id == partner_id) & (Message.recipient_id == current_user.id))
+            ).order_by(Message.timestamp.desc()).first()
+            
+            if not most_recent:
+                print(f"Warning: No messages found between {current_user.username} and user ID {partner_id}")
+                continue
+            
+            # Count unread messages
+            unread_count = Message.query.filter_by(
+                sender_id=partner_id,
+                recipient_id=current_user.id,
+                is_read=False
+            ).count()
+            
+            # Format the message preview
+            message_preview = most_recent.content
+            if len(message_preview) > 30:
+                message_preview = message_preview[:30] + '...'
+            
+            conversations.append({
+                'user_id': partner_id,
+                'username': partner.username,
+                'last_message': message_preview,
+                'timestamp': most_recent.timestamp.strftime('%m/%d/%Y'),
+                'unread': unread_count if unread_count > 0 else None
+            })
+        
+        # Sort conversations by most recent message
+        if conversations:
+            conversations.sort(key=lambda x: Message.query.filter(
+                ((Message.sender_id == current_user.id) & (Message.recipient_id == x['user_id'])) |
+                ((Message.sender_id == x['user_id']) & (Message.recipient_id == current_user.id))
+            ).order_by(Message.timestamp.desc()).first().timestamp, reverse=True)
+        
+        return render_template('messages.html', 
+                            conversations=conversations, 
+                            current_user=current_user,
+                            active_user=None)
+    except Exception as e:
+        print(f"Error in messages view: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        flash("There was an error loading your messages. Please try again.")
+        return render_template('messages.html', 
+                            conversations=[], 
+                            current_user=current_user,
+                            active_user=None)
 
 @app.route('/messages/<username>', methods=['GET', 'POST'])
 def conversation(username):
-    current_user = get_current_user()
+    current_user = ensure_user_object(get_current_user())
     if not current_user:
-        # If user is not logged in, redirect to login page
         return redirect('/login')
     
     # Get the other user
     other_user = User.query.filter_by(username=username).first_or_404()
     
     if request.method == 'POST':
-        content = request.form.get('content')
+        content = request.form.get('content', '').strip()
         if content:
-            # Create a new message
-            new_message = Message(
-                sender_id=current_user.id,
-                recipient_id=other_user.id,
-                content=content
-            )
-            db.session.add(new_message)
-            
-            # Create a notification for the recipient
-            notification = Notification(
-                user_id=other_user.id,
-                content=f"{current_user.username} sent you a message",
-                notification_type="message",
-                related_id=new_message.id
-            )
-            db.session.add(notification)
-            
+            try:
+                # Create a new message
+                message = Message(
+                    sender_id=current_user.id,
+                    recipient_id=other_user.id,
+                    content=content,
+                    timestamp=datetime.utcnow(),
+                    is_read=False
+                )
+                db.session.add(message)
+                db.session.commit()
+                
+                print(f"Message sent from {current_user.username} to {other_user.username}: {content[:30]}...")
+                
+                # Create a notification for the recipient
+                notification = Notification(
+                    user_id=other_user.id,
+                    content=f"{current_user.username} sent you a message",
+                    timestamp=datetime.utcnow(),
+                    is_read=False,
+                    notification_type='message',
+                    related_id=message.id
+                )
+                db.session.add(notification)
+                db.session.commit()
+            except Exception as e:
+                print(f"Error sending message: {str(e)}")
+                import traceback
+                print(traceback.format_exc())
+                db.session.rollback()
+                flash("There was an error sending your message. Please try again.")
+        
+        # Redirect to avoid form resubmission
+        return redirect(f'/messages/{username}')
+    
+    try:
+        # Get all messages between these users
+        messages = Message.query.filter(
+            ((Message.sender_id == current_user.id) & (Message.recipient_id == other_user.id)) |
+            ((Message.sender_id == other_user.id) & (Message.recipient_id == current_user.id))
+        ).order_by(Message.timestamp.asc()).all()
+        
+        # Mark messages as read
+        unread_count = 0
+        for message in messages:
+            if message.recipient_id == current_user.id and not message.is_read:
+                message.is_read = True
+                unread_count += 1
+        
+        if unread_count > 0:
+            print(f"Marked {unread_count} messages as read")
             db.session.commit()
+        
+        # Get all conversations for the sidebar
+        sent_messages = Message.query.filter_by(sender_id=current_user.id).all()
+        received_messages = Message.query.filter_by(recipient_id=current_user.id).all()
+        
+        # Combine all messages
+        all_messages = sent_messages + received_messages
+        
+        # Get unique conversation partners
+        conversation_partners = set()
+        for message in all_messages:
+            if message.sender_id == current_user.id:
+                conversation_partners.add(message.recipient_id)
+            else:
+                conversation_partners.add(message.sender_id)
+        
+        # Get the most recent message for each conversation
+        conversations = []
+        for partner_id in conversation_partners:
+            partner = User.query.get(partner_id)
+            if not partner:
+                print(f"Warning: User with ID {partner_id} not found")
+                continue
+                
+            # Get the most recent message between these users
+            most_recent = Message.query.filter(
+                ((Message.sender_id == current_user.id) & (Message.recipient_id == partner_id)) |
+                ((Message.sender_id == partner_id) & (Message.recipient_id == current_user.id))
+            ).order_by(Message.timestamp.desc()).first()
             
-            # In a real app, we might use AJAX or WebSockets here
-            # For simplicity, we'll just redirect back to the conversation
-            return redirect(f'/messages/{username}')
-    
-    # Get all messages between the current user and the other user
-    messages_query = Message.query.filter(
-        ((Message.sender_id == current_user.id) & (Message.recipient_id == other_user.id)) |
-        ((Message.sender_id == other_user.id) & (Message.recipient_id == current_user.id))
-    ).order_by(Message.timestamp.asc())
-    
-    messages = []
-    for msg in messages_query:
-        messages.append({
-            'content': msg.content,
-            'time': msg.timestamp.strftime('%H:%M'),
-            'is_mine': msg.sender_id == current_user.id,
-            'read': msg.is_read
-        })
-    
-    # Mark unread messages as read
-    unread_messages = Message.query.filter_by(
-        sender_id=other_user.id,
-        recipient_id=current_user.id,
-        is_read=False
-    ).all()
-    
-    for msg in unread_messages:
-        msg.is_read = True
-    
-    db.session.commit()
-    
-    # Get all conversations for the sidebar
-    conversations = db.session.query(User, Message) \
-        .join(Message, ((Message.sender_id == User.id) & (Message.recipient_id == current_user.id)) | 
-                      ((Message.recipient_id == User.id) & (Message.sender_id == current_user.id))) \
-        .filter(User.id != current_user.id) \
-        .group_by(User.id) \
-        .order_by(Message.timestamp.desc()) \
-        .all()
-    
-    # Format conversations for display
-    formatted_conversations = []
-    for user, last_message in conversations:
-        formatted_conversations.append({
-            'user': user,
-            'last_message': last_message.content[:50] + '...' if len(last_message.content) > 50 else last_message.content,
-            'last_message_time': last_message.timestamp.strftime('%H:%M'),
-            'last_message_is_mine': last_message.sender_id == current_user.id,
-            'unread': not last_message.is_read and last_message.recipient_id == current_user.id
-        })
-    
-    return render_template('messages.html', 
-                          current_user=current_user,
-                          conversations=formatted_conversations,
-                          active_user=other_user,
-                          messages=messages)
+            if not most_recent:
+                print(f"Warning: No messages found between {current_user.username} and user ID {partner_id}")
+                continue
+            
+            # Count unread messages
+            unread_count = Message.query.filter_by(
+                sender_id=partner_id,
+                recipient_id=current_user.id,
+                is_read=False
+            ).count()
+            
+            # Format the message preview
+            message_preview = most_recent.content
+            if len(message_preview) > 30:
+                message_preview = message_preview[:30] + '...'
+            
+            conversations.append({
+                'user_id': partner_id,
+                'username': partner.username,
+                'last_message': message_preview,
+                'timestamp': most_recent.timestamp.strftime('%m/%d/%Y'),
+                'unread': unread_count if unread_count > 0 else None
+            })
+        
+        # Sort conversations by most recent message
+        conversations.sort(key=lambda x: Message.query.filter(
+            ((Message.sender_id == current_user.id) & (Message.recipient_id == x['user_id'])) |
+            ((Message.sender_id == x['user_id']) & (Message.recipient_id == current_user.id))
+        ).order_by(Message.timestamp.desc()).first().timestamp, reverse=True)
+        
+        return render_template('messages.html', 
+                              conversations=conversations, 
+                              messages=messages, 
+                              current_user=current_user,
+                              active_user=other_user)
+    except Exception as e:
+        print(f"Error in conversation view: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        flash("There was an error loading the conversation. Please try again.")
+        return redirect('/messages')
 
 @app.route('/notifications')
 def notifications():
-    if not is_logged_in():
+    current_user = ensure_user_object(get_current_user())
+    if not current_user:
         return redirect('/login')
     
-    current_user = get_current_user()
-    if not current_user:
-        return redirect('/logout')
-    
-    # Get all notifications for current user
-    notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.timestamp.desc())
+    # Get all notifications for the current user
+    notifications = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.timestamp.desc()).all()
     
     # Mark all as read
     for notification in notifications:
         notification.is_read = True
-    
     db.session.commit()
     
     return render_template('notifications.html', 
-                          notifications=notifications,
+                          notifications=notifications, 
                           current_user=current_user)
 
 @app.route('/search')
 def search():
     # Vulnerable: XSS and SQL Injection
+    current_user = ensure_user_object(get_current_user())
+    if not current_user:
+        return redirect('/login')
+    
     query = request.args.get('q', '')
     
+    if not query:
+        return render_template('search.html', 
+                              results=[], 
+                              query='', 
+                              current_user=current_user)
+    
     try:
-        # Use direct SQLite3 connection
+        # Use direct SQLite3 connection instead of SQLAlchemy
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # Vulnerable: Direct string formatting in SQL query
-        sql = f"SELECT * FROM user WHERE username LIKE '%{query}%' OR full_name LIKE '%{query}%' OR email LIKE '%{query}%'"
-        cursor.execute(sql)
+        sql_query = f"SELECT * FROM user WHERE username LIKE '%{query}%' OR full_name LIKE '%{query}%' OR email LIKE '%{query}%'"
+        cursor.execute(sql_query)
+        results = cursor.fetchall()
         
         # Get column names
-        columns = [description[0] for description in cursor.description]
-        
-        # Fetch all results
-        results = cursor.fetchall()
+        column_names = [description[0] for description in cursor.description]
         
         # Convert to list of dicts
         users = []
         for row in results:
-            user_dict = {columns[i]: row[i] for i in range(len(columns))}
+            user_dict = {}
+            for i, value in enumerate(row):
+                user_dict[column_names[i]] = value
             users.append(user_dict)
         
-        return jsonify(users)
+        return render_template('search.html', 
+                              results=users, 
+                              query=query, 
+                              current_user=current_user)
     except Exception as e:
-        return jsonify({"error": str(e)})
+        # Make SQL errors visible for easier exploitation
+        return str(e), 500
     finally:
         cursor.close()
         conn.close()
 
 @app.route('/dashboard')
 def dashboard():
-    if 'username' not in session:
+    current_user = ensure_user_object(get_current_user())
+    if not current_user:
         return redirect('/login')
     
-    # Vulnerable: XSS possible here
-    username = session['username']
-    is_admin = request.cookies.get('is_admin', 'false')
-    return render_template('dashboard.html', username=username, is_admin=is_admin)
+    # Check if user is admin
+    if current_user.username != 'admin':
+        return "Access denied", 403
+    
+    # Get all users
+    users = User.query.all()
+    
+    return render_template('dashboard.html', 
+                          users=users, 
+                          current_user=current_user)
 
 @app.route('/hash', methods=['POST'])
 def hash_example():
@@ -1257,33 +1460,28 @@ def list_endpoints():
 
 @app.route('/new_chat', methods=['GET', 'POST'])
 def new_chat():
-    current_user = get_current_user()
+    current_user = ensure_user_object(get_current_user())
     if not current_user:
         return redirect('/login')
     
     if request.method == 'POST':
-        # Vulnerable: Direct use of user input without validation
         username = request.form.get('username')
-        
-        # Vulnerable: SQL Injection possible
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        
-        # Vulnerable: Direct string formatting in SQL query
-        query = f"SELECT * FROM user WHERE username='{username}'"
-        cursor.execute(query)
-        result = cursor.fetchone()
-        
-        if result:
-            # User found, redirect to conversation
-            return redirect(f'/messages/{username}')
-        else:
-            # User not found
-            return "User not found", 404
+        if username:
+            # Find the user
+            user = User.query.filter_by(username=username).first()
+            if user:
+                # Redirect to the conversation with this user
+                return redirect(f'/messages/{username}')
+            else:
+                flash(f"User {username} not found")
+                return redirect('/new_chat')
     
-    # Get all users except current user for the dropdown
+    # Get all users except current user
     users = User.query.filter(User.id != current_user.id).all()
-    return render_template('new_chat.html', current_user=current_user, users=users)
+    
+    return render_template('new_chat.html', 
+                          users=users, 
+                          current_user=current_user)
 
 # Add a debug endpoint to list all users
 @app.route('/debug/users')
@@ -1325,6 +1523,8 @@ def debug_users():
 @app.route('/debug/login/<username>')
 def debug_login(username):
     try:
+        print(f"Debug login for username: {username}")
+        
         # Get the user from the database
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
@@ -1335,13 +1535,21 @@ def debug_login(username):
         user_row = cursor.fetchone()
         
         if not user_row:
+            print(f"User {username} not found in database")
             return jsonify({'error': f'User {username} not found'}), 404
         
         # Convert row to dict for display
         user_dict = dict(user_row)
+        print(f"SQLite user: {user_dict}")
         
         # Get the same user using SQLAlchemy
         sqlalchemy_user = User.query.filter_by(username=username).first()
+        print(f"SQLAlchemy user type: {type(sqlalchemy_user)}")
+        
+        if sqlalchemy_user:
+            print(f"SQLAlchemy user: {sqlalchemy_user.username}")
+        else:
+            print(f"SQLAlchemy user not found for username: {username}")
         
         return jsonify({
             'sqlite_user': {
@@ -1356,9 +1564,12 @@ def debug_login(username):
         })
     except Exception as e:
         import traceback
+        error_traceback = traceback.format_exc()
+        print(f"Error in debug_login: {str(e)}")
+        print(error_traceback)
         return jsonify({
             'error': str(e),
-            'traceback': traceback.format_exc()
+            'traceback': error_traceback
         }), 500
 
 # Add a debug endpoint to check the database schema
@@ -1421,6 +1632,98 @@ def debug_data():
             data[table_name] = [dict(row) for row in rows]
         
         return jsonify(data)
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
+# Generate a predictable hash for conversation IDs
+def generate_conversation_hash(user1_id, user2_id):
+    """
+    Generate a predictable hash for a conversation between two users.
+    This is intentionally vulnerable - using MD5 with no salt and a predictable pattern.
+    """
+    # Always use the smaller ID first to ensure consistency
+    if user1_id > user2_id:
+        user1_id, user2_id = user2_id, user1_id
+    
+    # Create a predictable string pattern
+    conversation_string = f"chat_{user1_id}_{user2_id}"
+    
+    # Use MD5 (weak hash) with no salt
+    import hashlib
+    hash_object = hashlib.md5(conversation_string.encode())
+    return hash_object.hexdigest()
+
+@app.route('/conversation/<conversation_hash>', methods=['GET', 'POST'])
+def conversation_by_hash(conversation_hash):
+    """
+    Access a conversation using a predictable hash.
+    This is intentionally vulnerable to allow guessing of conversation hashes.
+    """
+    current_user = ensure_user_object(get_current_user())
+    if not current_user:
+        return redirect('/login')
+    
+    # For demonstration purposes, try to find the conversation by brute-forcing
+    # In a real attack, someone would try different user ID combinations
+    found_user = None
+    
+    # Try the first 100 user IDs (this is intentionally inefficient for demonstration)
+    for user_id in range(1, 100):
+        if user_id != current_user.id:
+            test_hash = generate_conversation_hash(current_user.id, user_id)
+            if test_hash == conversation_hash:
+                found_user = User.query.get(user_id)
+                break
+    
+    if not found_user:
+        return jsonify({
+            "error": "Conversation not found",
+            "note": "This is a vulnerable endpoint that uses predictable hashes for conversation IDs"
+        }), 404
+    
+    # Now that we found the user, redirect to the regular conversation view
+    return redirect(f'/messages/{found_user.username}')
+
+# Add functions to template context
+@app.context_processor
+def utility_processor():
+    return {
+        'generate_conversation_hash': generate_conversation_hash
+    }
+
+@app.route('/debug/conversation_hashes')
+def debug_conversation_hashes():
+    """
+    Debug endpoint to demonstrate the vulnerability of predictable conversation hashes.
+    This shows how an attacker could generate hashes for any user combination.
+    """
+    try:
+        # Get all users
+        users = User.query.all()
+        
+        # Generate a table of conversation hashes
+        hash_table = []
+        for i, user1 in enumerate(users[:10]):  # Limit to first 10 users for performance
+            for user2 in users[i+1:10]:
+                conversation_hash = generate_conversation_hash(user1.id, user2.id)
+                hash_table.append({
+                    'user1_id': user1.id,
+                    'user1_username': user1.username,
+                    'user2_id': user2.id,
+                    'user2_username': user2.username,
+                    'conversation_hash': conversation_hash,
+                    'conversation_url': f'/conversation/{conversation_hash}'
+                })
+        
+        return jsonify({
+            'note': 'This endpoint demonstrates how predictable conversation hashes can be exploited',
+            'explanation': 'An attacker could generate these hashes and access private conversations',
+            'hash_table': hash_table
+        })
     except Exception as e:
         import traceback
         return jsonify({
