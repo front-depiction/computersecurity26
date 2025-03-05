@@ -1,101 +1,61 @@
-# Secure Web Application Project
+# Computer Security Project
 
-This project demonstrates the transformation of a vulnerable web application into a secure one. It serves as an educational resource for understanding common web application vulnerabilities and how to remediate them.
+This repository contains a vulnerable web application and its secure version for educational purposes.
 
 ## Project Structure
 
-- `app/app.py` - The original vulnerable application
-- `safe_app.py` - The secure version of the application with vulnerabilities fixed
-- `VULNERABILITIES.md` - Comprehensive documentation of vulnerabilities and their fixes
-- `EXPLOITATION_GUIDE.md` - Guide for testing security vulnerabilities (for educational purposes only)
+```
+.
+├── app/                    # Application code
+│   └── app.py              # Vulnerable application
+├── config/                 # Configuration files
+│   ├── requirements.txt    # Dependencies for vulnerable app
+│   └── requirements_safe.txt # Dependencies for secure app
+├── docs/                   # Documentation
+│   ├── ARCHITECTURE.md     # Application architecture
+│   ├── EXPLOITATION_GUIDE.md # Guide for exploiting vulnerabilities
+│   ├── README.md           # Detailed project documentation
+│   ├── SNIPPETS.md         # Code snippets
+│   ├── TODO.md             # Project todos
+│   └── VULNERABILITIES.md  # List of vulnerabilities and fixes
+├── docker/                 # Docker configuration
+│   ├── Dockerfile          # Docker for vulnerable app
+│   └── Dockerfile_safe     # Docker for secure app
+├── instance/               # Database files
+├── requirements.txt        # Symlink to config/requirements.txt
+├── safe_app.py             # Secure version of the application
+├── scripts/                # Utility scripts
+│   ├── add_100_users.py    # Script to add test users
+│   ├── generate_fake_users.py # Script to generate fake user data
+│   └── user_directory.json # Sample user data
+├── static/                 # Static files
+│   └── uploads/            # User uploads directory
+├── templates/              # HTML templates
+└── tests/                  # Test files
+    └── test_simplechat_vulnerabilities.py # Test for vulnerabilities
+```
 
-## Vulnerabilities Addressed
+## Getting Started
 
-The secure version of the application addresses 15 common web application vulnerabilities:
+1. Clone this repository
+2. Install dependencies: `pip install -r config/requirements.txt`
+3. Run the vulnerable application: `python app/app.py`
+4. Run the secure application: `python safe_app.py`
 
-1. Plaintext Password Storage
-2. SQL Injection
-3. Cross-Site Scripting (XSS)
-4. Cross-Site Request Forgery (CSRF)
-5. Insecure Session Management
-6. Sensitive Data Exposure
-7. Insecure File Upload
-8. Privilege Escalation
-9. Weak Password Requirements
-10. Lack of Rate Limiting
-11. Hardcoded Secrets
-12. Insecure Direct Object References (IDOR)
-13. Verbose Error Messages
-14. Missing Security Headers
-15. Unrestricted File Access
-
-For detailed information about each vulnerability and how it was fixed, please refer to the `VULNERABILITIES.md` file.
-
-## Running the Application
-
-### Prerequisites
-
-- Python 3.8 or higher
-- Docker (optional)
-
-### Installation
-
-1. Clone the repository:
-
-   ```
-   git clone <repository-url>
-   cd vulnerable_webapp
-   ```
-
-2. Create a virtual environment and install dependencies:
-
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-3. Run the secure application:
-   ```
-   python safe_app.py
-   ```
-
-### Docker Deployment
+## Docker
 
 To run the application using Docker:
 
+```bash
+# For the vulnerable version
+docker build -t vulnerable-app -f docker/Dockerfile .
+docker run -p 5001:5001 vulnerable-app
+
+# For the secure version
+docker build -t secure-app -f docker/Dockerfile_safe .
+docker run -p 5001:5001 secure-app
 ```
-docker build -t secure-webapp .
-docker run -d -p 5001:5001 --name secure-webapp secure-webapp
-```
 
-## Security Features
+## Documentation
 
-The secure version of the application implements several security best practices:
-
-- **Password Security**: Passwords are hashed using Werkzeug's secure password hashing functions
-- **Input Validation**: All user inputs are validated and sanitized
-- **CSRF Protection**: All forms include CSRF tokens to prevent cross-site request forgery
-- **Secure Session Management**: Sessions are managed securely with appropriate cookie settings
-- **Access Controls**: Proper authorization checks are implemented for all resources
-- **Secure File Handling**: File uploads are validated and stored securely
-- **Error Handling**: Generic error messages are displayed to users while detailed errors are logged
-- **Rate Limiting**: Sensitive operations are protected against brute force attacks
-- **Environment Configuration**: Sensitive configuration is loaded from environment variables
-
-## Educational Purpose
-
-This project is designed for educational purposes to help developers understand:
-
-1. How common web application vulnerabilities work
-2. How to identify vulnerabilities in code
-3. How to implement secure coding practices
-4. The importance of security in web application development
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Disclaimer
-
-The vulnerable version of this application (`app/app.py`) contains intentional security flaws and should never be deployed in a production environment. It is provided solely for educational purposes to demonstrate security vulnerabilities and their remediation.
+For detailed documentation, please refer to the files in the `docs/` directory.

@@ -3,7 +3,7 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Copy requirements first for better caching
-COPY requirements_safe.txt .
+COPY config/requirements_safe.txt .
 RUN pip install --no-cache-dir -r requirements_safe.txt
 
 # Copy application code
