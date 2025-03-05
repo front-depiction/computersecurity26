@@ -1644,6 +1644,118 @@ def notifications():
     
     return render_template('notifications.html', notifications=notifications_list, current_user=current_user)
 
+# Fix: Add new_chat route
+@app.route('/new_chat', methods=['GET', 'POST'])
+@login_required
+def new_chat():
+    """Secure new chat route."""
+    current_user = get_current_user()
+    
+    if request.method == 'POST':
+        # Validate CSRF token
+        token = request.form.get('csrf_token')
+        if not validate_csrf_token(token):
+            flash("Invalid request. Please try again.", "error")
+            return redirect(url_for('new_chat'))
+        
+        username = request.form.get('username')
+        if username:
+            # Find the user with proper input validation
+            user = User.query.filter_by(username=username).first()
+            if user:
+                # Redirect to the conversation with this user
+                return redirect(url_for('conversation', username=username))
+            else:
+                flash(f"User {username} not found", "error")
+                return redirect(url_for('new_chat'))
+    
+    # Get all users except current user
+    users = User.query.filter(User.id != current_user.id).all()
+    
+    return render_template('new_chat.html', users=users, current_user=current_user)
+
+# Fix: Add update-profile-picture route
+@app.route('/update-profile-picture', methods=['GET', 'POST'])
+@login_required
+def update_profile_picture():
+    """Secure profile picture update route."""
+    current_user = get_current_user()
+    
+    if request.method == 'POST':
+        # Validate CSRF token
+        token = request.form.get('csrf_token')
+        if not validate_csrf_token(token):
+            flash("Invalid request. Please try again.", "error")
+            return redirect(url_for('update_profile_picture'))
+        
+        picture_url = request.form.get('picture_url')
+        
+        if not picture_url:
+            flash("Please provide a URL for the profile picture.", "error")
+        else:
+            try:
+                # Fix: Validate URL scheme and domain to prevent SSRF
+                parsed_url = urlparse(picture_url)
+                
+                # Only allow http and https schemes
+                if parsed_url.scheme not in ['http', 'https']:
+                    flash("Invalid URL scheme. Only HTTP and HTTPS are allowed.", "error")
+                    return redirect(url_for('update_profile_picture'))
+                
+                # Block access to internal/private networks
+                hostname = parsed_url.netloc.split(':')[0]
+                if hostname in ['localhost', '127.0.0.1', '::1'] or \
+                   hostname.startswith('192.168.') or \
+                   hostname.startswith('10.') or \
+                   hostname.startswith('172.16.') or \
+                   hostname.startswith('172.17.') or \
+                   hostname.startswith('172.18.') or \
+                   hostname.startswith('172.19.') or \
+                   hostname.startswith('172.20.') or \
+                   hostname.startswith('172.21.') or \
+                   hostname.startswith('172.22.') or \
+                   hostname.startswith('172.23.') or \
+                   hostname.startswith('172.24.') or \
+                   hostname.startswith('172.25.') or \
+                   hostname.startswith('172.26.') or \
+                   hostname.startswith('172.27.') or \
+                   hostname.startswith('172.28.') or \
+                   hostname.startswith('172.29.') or \
+                   hostname.startswith('172.30.') or \
+                   hostname.startswith('172.31.'):
+                    flash("Access to internal networks is not allowed.", "error")
+                    return redirect(url_for('update_profile_picture'))
+                
+                # Fix: Set a timeout and limit redirects
+                response = requests.get(picture_url, timeout=5, allow_redirects=True, 
+                                       max_redirects=3, stream=True)
+                
+                # Fix: Verify content type is an image
+                content_type = response.headers.get('Content-Type', '')
+                if not content_type.startswith('image/'):
+                    flash("The URL does not point to a valid image.", "error")
+                    return redirect(url_for('update_profile_picture'))
+                
+                # Fix: Limit image size
+                content_length = response.headers.get('Content-Length')
+                if content_length and int(content_length) > 5 * 1024 * 1024:  # 5MB
+                    flash("Image is too large. Maximum size is 5MB.", "error")
+                    return redirect(url_for('update_profile_picture'))
+                
+                if response.status_code == 200:
+                    # Successfully fetched the image
+                    current_user.profile_picture = picture_url
+                    db.session.commit()
+                    flash("Profile picture updated successfully.", "success")
+                else:
+                    flash(f"Failed to fetch image from URL. Status code: {response.status_code}", "error")
+            except Exception as e:
+                db.session.rollback()
+                app.logger.error(f"Error updating profile picture: {str(e)}")
+                flash(f"An error occurred: {str(e)}", "error")
+    
+    return render_template('update_profile_picture.html', current_user=current_user)
+
 # Fix: Add main block to initialize database and run the app
 if __name__ == '__main__':
     # Run the application
