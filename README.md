@@ -1,89 +1,101 @@
-# Vulnerable Web Application
+# Secure Web Application Project
 
-⚠️ **WARNING: THIS IS AN INTENTIONALLY VULNERABLE APPLICATION** ⚠️
+This project demonstrates the transformation of a vulnerable web application into a secure one. It serves as an educational resource for understanding common web application vulnerabilities and how to remediate them.
 
-This web application is designed for educational purposes ONLY. It contains numerous security vulnerabilities and should NEVER be deployed in a production environment or exposed to the public internet.
+## Project Structure
 
-## Intentional Vulnerabilities
+- `app/app.py` - The original vulnerable application
+- `safe_app.py` - The secure version of the application with vulnerabilities fixed
+- `VULNERABILITIES.md` - Comprehensive documentation of vulnerabilities and their fixes
+- `EXPLOITATION_GUIDE.md` - Guide for testing security vulnerabilities (for educational purposes only)
 
-1. SQL Injection
-   - Login form
-   - Search functionality
-2. Cross-Site Scripting (XSS)
-   - User profile display
-   - Search results
-3. Security Misconfigurations
-   - Default admin credentials (admin/admin123)
-   - Debug mode enabled
-   - Hardcoded secret key
-   - Insecure HTTP headers (e.g., X-Powered-By, Content-Security-Policy)
-4. Cryptographic Failures
-   - Weak cryptographic algorithm (MD5)
-   - Plaintext password storage
-5. Identification and Authentication Failures
-   - Plaintext password storage
-   - Weak password policies (minimum 4 characters)
-   - Session fixation vulnerability (no session ID regeneration)
-6. Software and Data Integrity Failures
-   - Insecure update mechanism
-   - No signature verification
-   - Unvalidated backup/restore
-7. Security Logging and Monitoring Failures
-   - No logging of sensitive actions
-   - No error logging
-   - Detailed error messages in production
-   - No rate limiting
-8. Server-Side Request Forgery (SSRF)
-   - Unvalidated URL fetching
-   - Internal network scanning possible
-   - No URL scheme restrictions
-9. Other Issues
-   - No CSRF protection
-   - Direct object references
-   - Unescaped user input
+## Vulnerabilities Addressed
 
-## Setup Instructions
+The secure version of the application addresses 15 common web application vulnerabilities:
 
-1. Run all commands at once:
+1. Plaintext Password Storage
+2. SQL Injection
+3. Cross-Site Scripting (XSS)
+4. Cross-Site Request Forgery (CSRF)
+5. Insecure Session Management
+6. Sensitive Data Exposure
+7. Insecure File Upload
+8. Privilege Escalation
+9. Weak Password Requirements
+10. Lack of Rate Limiting
+11. Hardcoded Secrets
+12. Insecure Direct Object References (IDOR)
+13. Verbose Error Messages
+14. Missing Security Headers
+15. Unrestricted File Access
 
-   ```bash
-   docker ps --filter "publish=5001" --format "{{.ID}}" | xargs -r docker stop && \
-   docker rm vulnerable-webapp || true && \
-   docker rmi vulnerable-webapp || true && \
-   docker build --no-cache -t vulnerable-webapp . && \
-   docker run -p 5001:5001 --name vulnerable-webapp vulnerable-webapp
+For detailed information about each vulnerability and how it was fixed, please refer to the `VULNERABILITIES.md` file.
+
+## Running the Application
+
+### Prerequisites
+
+- Python 3.8 or higher
+- Docker (optional)
+
+### Installation
+
+1. Clone the repository:
+
+   ```
+   git clone <repository-url>
+   cd vulnerable_webapp
    ```
 
-   Or run each step individually:
+2. Create a virtual environment and install dependencies:
 
-2. Remove any existing image:
-
-   ```bash
-   docker rmi vulnerable-webapp || true
+   ```
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
    ```
 
-3. Build the Docker image:
-
-   ```bash
-   docker build --no-cache -t vulnerable-webapp .
+3. Run the secure application:
+   ```
+   python safe_app.py
    ```
 
-4. Run the container:
+### Docker Deployment
 
-   ```bash
-   docker run -p 5001:5001 vulnerable-webapp
-   ```
+To run the application using Docker:
 
-5. Access the application at http://localhost:5001
+```
+docker build -t secure-webapp .
+docker run -d -p 5001:5001 --name secure-webapp secure-webapp
+```
 
-## Security Notice
+## Security Features
 
-- Run this application ONLY in a controlled, isolated environment
-- Never expose this to the public internet
-- Use only for educational purposes
-- Reset the container regularly to clean the database
+The secure version of the application implements several security best practices:
 
-## Default Credentials
+- **Password Security**: Passwords are hashed using Werkzeug's secure password hashing functions
+- **Input Validation**: All user inputs are validated and sanitized
+- **CSRF Protection**: All forms include CSRF tokens to prevent cross-site request forgery
+- **Secure Session Management**: Sessions are managed securely with appropriate cookie settings
+- **Access Controls**: Proper authorization checks are implemented for all resources
+- **Secure File Handling**: File uploads are validated and stored securely
+- **Error Handling**: Generic error messages are displayed to users while detailed errors are logged
+- **Rate Limiting**: Sensitive operations are protected against brute force attacks
+- **Environment Configuration**: Sensitive configuration is loaded from environment variables
 
-- Username: admin
-- Password: admin123
+## Educational Purpose
+
+This project is designed for educational purposes to help developers understand:
+
+1. How common web application vulnerabilities work
+2. How to identify vulnerabilities in code
+3. How to implement secure coding practices
+4. The importance of security in web application development
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Disclaimer
+
+The vulnerable version of this application (`app/app.py`) contains intentional security flaws and should never be deployed in a production environment. It is provided solely for educational purposes to demonstrate security vulnerabilities and their remediation.

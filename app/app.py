@@ -932,6 +932,7 @@ def messages():
     if not current_user:
         return redirect('/login')
     
+    # Pass the user ID instead of the user object
     conversations = get_conversations_for_user(current_user.id)
     return render_template('messages.html', conversations=conversations, current_user=current_user)
 
@@ -946,6 +947,11 @@ def conversation(username):
     if not other_user:
         flash("User not found.")
         return redirect('/messages')
+    
+    # Create database connection
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
     
     # Handle POST request for sending a message
     if request.method == 'POST':
@@ -963,7 +969,7 @@ def conversation(username):
                 # Store the raw message content without any sanitization
                 cursor.execute(
                     "INSERT INTO message (sender_id, recipient_id, content, timestamp, is_read) VALUES (?, ?, ?, ?, ?)",
-                    (current_user_id, other_user['id'], message_content, datetime.utcnow(), False)
+                    (current_user_id, other_user.id, message_content, datetime.utcnow(), False)
                 )
                 
                 # Create notification for the recipient
@@ -971,7 +977,7 @@ def conversation(username):
                 notification_content = f"New message from {current_username}"
                 cursor.execute(
                     "INSERT INTO notification (user_id, content, timestamp, is_read, notification_type, related_id) VALUES (?, ?, ?, ?, ?, ?)",
-                    (other_user['id'], notification_content, datetime.utcnow(), False, 'message', current_user_id)
+                    (other_user.id, notification_content, datetime.utcnow(), False, 'message', current_user_id)
                 )
                 
                 conn.commit()
@@ -988,7 +994,7 @@ def conversation(username):
         WHERE (sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?)
         ORDER BY timestamp ASC
         """,
-        (current_user_id, other_user['id'], other_user['id'], current_user_id)
+        (current_user_id, other_user.id, other_user.id, current_user_id)
     )
     messages_data = cursor.fetchall()
     
@@ -1005,7 +1011,7 @@ def conversation(username):
                 message['timestamp'] = datetime.strptime(message['timestamp'], '%Y-%m-%d %H:%M:%S.%f')
             except (ValueError, TypeError):
                 try:
-                    # Try alternative format without microseconds
+                    # Alternative format without microseconds
                     message['timestamp'] = datetime.strptime(message['timestamp'], '%Y-%m-%d %H:%M:%S')
                 except (ValueError, TypeError):
                     # If parsing fails, set to current time to avoid template errors
@@ -1786,7 +1792,11 @@ def get_conversations_for_user(current_user):
     # Get all conversations for the current user
     try:
         # Get current user ID - handle both User objects and dictionaries
-        current_user_id = current_user.id if hasattr(current_user, 'id') else current_user['id']
+        current_user_id = current_user
+        if hasattr(current_user, 'id'):
+            current_user_id = current_user.id
+        elif isinstance(current_user, dict) and 'id' in current_user:
+            current_user_id = current_user['id']
         
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
