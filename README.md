@@ -48,12 +48,18 @@ To run the application using Docker:
 
 ```bash
 # For the vulnerable version
-docker build -t vulnerable-app -f docker/Dockerfile .
-docker run -p 5001:5001 vulnerable-app
+docker ps --filter "publish=5001" --format "{{.ID}}" | xargs -r docker stop && \
+docker rm vulnerable-webapp || true && \
+docker rmi vulnerable-webapp || true && \
+docker build --no-cache -t vulnerable-webapp -f docker/Dockerfile_vulnerable . && \
+docker run -p 5001:5001 --name vulnerable-webapp vulnerable-webapp
 
 # For the secure version
-docker build -t secure-app -f docker/Dockerfile_safe .
-docker run -p 5001:5001 secure-app
+docker ps --filter "publish=5001" --format "{{.ID}}" | xargs -r docker stop && \
+docker rm secure-webapp || true && \
+docker rmi secure-webapp || true && \
+docker build --no-cache -t secure-webapp -f docker/Dockerfile_safe . && \
+docker run -p 5001:5001 --name secure-webapp secure-webapp
 ```
 
 ## Documentation

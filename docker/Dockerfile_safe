@@ -16,13 +16,17 @@ RUN mkdir -p static/uploads && chmod 755 static/uploads
 RUN mkdir -p instance
 
 # Set environment variables
-ENV FLASK_APP=safe_app.py
+ENV FLASK_APP=app/safe_app.py
 ENV FLASK_ENV=production
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
 # Generate a random secret key at build time
 RUN echo "FLASK_SECRET_KEY=$(python -c 'import secrets; print(secrets.token_hex(32))')" > .env
+
+# Make our script executable and run it to add 100 users to the database
+RUN chmod +x scripts/add_100_users_safe.py
+RUN python scripts/add_100_users_safe.py
 
 # Run as non-root user for better security
 RUN adduser --disabled-password --gecos '' appuser
@@ -33,4 +37,4 @@ USER appuser
 EXPOSE 5001
 
 # Run the application with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5001", "safe_app:app"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:5001", "app.safe_app:app"] 
