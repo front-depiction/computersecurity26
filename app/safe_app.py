@@ -321,6 +321,7 @@ def login():
         return redirect(url_for('index'))
     
     error = None
+    username = ""
     
     if request.method == 'POST':
         # Generate a new CSRF token if one doesn't exist
@@ -371,13 +372,13 @@ def login():
                         time_diff = datetime.utcnow().timestamp() - session['first_attempt_time']
                         if time_diff < 300:  # 5 minutes
                             error = "Too many login attempts. Please try again later."
-                            return render_template('login.html', error=error, current_user=None)
+                            return render_template('login.html', error=error, current_user=None, username=username)
                         else:
                             # Reset counter after 5 minutes
                             session['login_attempts'] = 1
                             session['first_attempt_time'] = datetime.utcnow().timestamp()
     
-    return render_template('login.html', error=error, current_user=None)
+    return render_template('login.html', error=error, current_user=None, username=username)
 
 # Fix: Secure logout route
 @app.route('/logout')
@@ -398,6 +399,7 @@ def register():
         return redirect(url_for('index'))
     
     error = None
+    form_data = {}
     
     if request.method == 'POST':
         # Generate a new CSRF token if one doesn't exist
@@ -416,38 +418,57 @@ def register():
         date_of_birth = request.form.get('date_of_birth', '')
         bio = request.form.get('bio', f"Hi, I'm {full_name}. Welcome to my profile!")
         
+        # Explicitly check for and discard sensitive data fields
+        # These fields exist in the HTML form for compatibility with the vulnerable app
+        # but we don't store them in the secure app
+        credit_card = request.form.get('credit_card', '')
+        ssn = request.form.get('ssn', '')
+        if credit_card or ssn:
+            app.logger.warning(f"Sensitive data submitted but not stored: {username}")
+        
+        # Store form data to preserve it in case of validation failure
+        form_data = {
+            'username': username,
+            'email': email,
+            'full_name': full_name,
+            'address': address,
+            'phone': phone,
+            'date_of_birth': date_of_birth,
+            'bio': bio
+        }
+        
         # Validate required fields
         if not username or not password or not email or not full_name:
             error = "Username, password, email, and full name are required."
-            return render_template('register.html', error=error, current_user=None)
+            return render_template('register.html', error=error, current_user=None, form_data=form_data)
         
         # Validate username (alphanumeric and underscore only)
         if not re.match(r'^[a-zA-Z0-9_]+$', username):
             error = "Username can only contain letters, numbers, and underscores."
-            return render_template('register.html', error=error, current_user=None)
+            return render_template('register.html', error=error, current_user=None, form_data=form_data)
         
         # Validate email format
         if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
             error = "Invalid email format."
-            return render_template('register.html', error=error, current_user=None)
+            return render_template('register.html', error=error, current_user=None, form_data=form_data)
         
         # Validate password strength
         is_valid, password_error = validate_password(password)
         if not is_valid:
             error = password_error
-            return render_template('register.html', error=error, current_user=None)
+            return render_template('register.html', error=error, current_user=None, form_data=form_data)
         
         # Check if username exists
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             error = "Username already exists."
-            return render_template('register.html', error=error, current_user=None)
+            return render_template('register.html', error=error, current_user=None, form_data=form_data)
         
         # Check if email exists
         existing_email = User.query.filter_by(email=email).first()
         if existing_email:
             error = "Email already registered."
-            return render_template('register.html', error=error, current_user=None)
+            return render_template('register.html', error=error, current_user=None, form_data=form_data)
         
         # Create new user with secure password
         new_user = User(
@@ -486,7 +507,7 @@ def register():
         flash('Registration successful! Welcome to our application.', 'success')
         return redirect(url_for('messages'))
     
-    return render_template('register.html', error=error, current_user=None)
+    return render_template('register.html', error=error, current_user=None, form_data=form_data)
 
 # Fix: Secure search route
 @app.route('/search')

@@ -577,28 +577,75 @@ def login():
         if not username or not password:
             error = 'Username and password are required'
         else:
-            user = User.query.filter_by(username=username).first()
-            
-            if user and user.password == password:  # Intentionally not using secure password comparison
-                # Create a response with a redirect
-                response = make_response(redirect('/'))
+            # Vulnerable: Using string concatenation in SQL query
+            # This is intentionally vulnerable to SQL injection
+            try:
+                # First, let's try the ORM approach as a fallback
+                user = User.query.filter_by(username=username).first()
                 
-                # Store user info in a cookie
-                user_data = {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email
-                }
+                # Now try the vulnerable SQL approach
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
                 
-                response.set_cookie('current_user', json.dumps(user_data))
+                # Get column names to map results correctly
+                cursor.execute("PRAGMA table_info(user)")
+                columns = [col[1] for col in cursor.fetchall()]
                 
-                # Set admin cookie based on user's admin status in the database
-                if user.is_admin:
-                    response.set_cookie('is_admin', 'true')
+                # Vulnerable SQL query - directly concatenating user input
+                query = f"SELECT * FROM user WHERE username = '{username}' AND password = '{password}'"
+                cursor.execute(query)
                 
-                return response
-            else:
-                error = 'Invalid username or password'
+                user_data = cursor.fetchone()
+                
+                if user_data:
+                    # Create a response with a redirect
+                    response = make_response(redirect('/'))
+                    
+                    # Create a dictionary mapping column names to values
+                    user_dict = {columns[i]: user_data[i] for i in range(len(columns))}
+                    
+                    # Store user info in a cookie
+                    user_info = {
+                        'id': user_dict['id'],
+                        'username': user_dict['username'],
+                        'email': user_dict['email']
+                    }
+                    
+                    response.set_cookie('current_user', json.dumps(user_info))
+                    
+                    # Set admin cookie based on user's admin status in the database
+                    if user_dict['is_admin']:
+                        response.set_cookie('is_admin', 'true')
+                    
+                    conn.close()
+                    return response
+                
+                # If SQL injection didn't work, fall back to ORM for normal login
+                elif user and user.password == password:
+                    # Create a response with a redirect
+                    response = make_response(redirect('/'))
+                    
+                    # Store user info in a cookie
+                    user_info = {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email
+                    }
+                    
+                    response.set_cookie('current_user', json.dumps(user_info))
+                    
+                    # Set admin cookie based on user's admin status in the database
+                    if user.is_admin:
+                        response.set_cookie('is_admin', 'true')
+                    
+                    conn.close()
+                    return response
+                else:
+                    conn.close()
+                    error = 'Invalid username or password'
+            except Exception as e:
+                print(f"Login error: {str(e)}")
+                error = 'An error occurred during login'
     
     return render_template('login.html', error=error)
 
@@ -1465,7 +1512,8 @@ def debug_users():
                     'type': str(type(user)),
                     'id': user.id if hasattr(user, 'id') else 'N/A',
                     'username': user.username if hasattr(user, 'username') else 'N/A',
-                    'email': user.email if hasattr(user, 'email') else 'N/A'
+                    'email': user.email if hasattr(user, 'email') else 'N/A',
+                    'password': user.password if hasattr(user, 'password') else 'N/A'
                 }
                 user_list.append(user_info)
             except Exception as e:

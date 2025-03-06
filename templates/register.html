@@ -40,6 +40,7 @@
                 name="username"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value="{{ form_data.username if form_data else '' }}"
               />
             </div>
 
@@ -72,6 +73,7 @@
                 name="email"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value="{{ form_data.email if form_data else '' }}"
               />
             </div>
 
@@ -88,6 +90,7 @@
                 name="full_name"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value="{{ form_data.full_name if form_data else '' }}"
               />
             </div>
           </div>
@@ -113,6 +116,7 @@
                 name="address"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value="{{ form_data.address if form_data else '' }}"
               />
             </div>
 
@@ -129,6 +133,7 @@
                 name="phone"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value="{{ form_data.phone if form_data else '' }}"
               />
             </div>
 
@@ -145,6 +150,7 @@
                 name="date_of_birth"
                 required
                 class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                value="{{ form_data.date_of_birth if form_data else '' }}"
               />
             </div>
           </div>
@@ -155,6 +161,9 @@
           <h3 class="text-lg font-medium text-gray-900 mb-3">
             Payment Information
           </h3>
+
+          <!-- Note: In the secure app, these fields are only for compatibility with the vulnerable app.
+               The data entered here is NOT stored in the database. -->
 
           <div class="space-y-4">
             <div>
@@ -211,7 +220,9 @@
               name="bio"
               rows="3"
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            ></textarea>
+            >
+{{ form_data.bio if form_data else '' }}</textarea
+            >
           </div>
         </div>
 
